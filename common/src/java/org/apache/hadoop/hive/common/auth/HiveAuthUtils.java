@@ -97,6 +97,22 @@ public class HiveAuthUtils {
     return configureThriftMaxMessageSize(tSocket, maxMessageSize);
   }
 
+  public static TTransport getTLSClientSocket(String host, int port, int loginTimeout,
+      String trustStorePath, String trustStorePassWord) throws TTransportException {
+    TSSLTransportFactory.TSSLTransportParameters params = new TSSLTransportFactory.TSSLTransportParameters();
+    params.setTrustStore(trustStorePath, trustStorePassWord);
+    return TSSLTransportFactory.getClientSocket(host, port, loginTimeout, params);
+  }
+
+  public static TTransport get2WayTLSClientSocket(String host, int port, int loginTimeout,
+      String trustStorePath, String trustStorePassword, String keyStorePath,
+      String keyStorePassword) throws TTransportException {
+    TSSLTransportFactory.TSSLTransportParameters params = new TSSLTransportFactory.TSSLTransportParameters();
+    params.setTrustStore(trustStorePath, trustStorePassword);
+    params.setKeyStore(keyStorePath, keyStorePassword);
+    return TSSLTransportFactory.getClientSocket(host, port, loginTimeout, params);
+  }
+
   public static TTransport getSSLSocket(String host, int port, int loginTimeout, TSSLTransportParameters params,
       int maxMessageSize) throws TTransportException {
     // The underlying SSLSocket object is bound to host:port with the given SO_TIMEOUT and

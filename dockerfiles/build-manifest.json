@@ -1,0 +1,12 @@
+[
+    {
+        "name": "hopsworks/hive",
+        "version": "`printf \"%s-%s\" $HIVE_VERSION $IMAGE_BUILD_VERSION`",
+        "variables": [
+          "HIVE_VERSION",
+          "IMAGE_BUILD_VERSION"
+        ],
+        "dockerFile": "dockerfiles/Dockerfile",
+        "extraDockerArgs": "--secret id=wgetrc,src=wgetrc --build-arg HIVE_VERSION=${HIVE_VERSION}"
+    }
+]

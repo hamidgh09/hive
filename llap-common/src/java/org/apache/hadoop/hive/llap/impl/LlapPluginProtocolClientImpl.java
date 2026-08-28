@@ -30,7 +30,7 @@ public class LlapPluginProtocolClientImpl implements LlapPluginProtocolPB {
   private ProtobufProxy<LlapPluginProtocolPB> protobuf;
 
   public LlapPluginProtocolClientImpl(Configuration conf, String hostname, int port,
-      RetryPolicy retryPolicy, SocketFactory socketFactory, UserGroupInformation ugi) {
+      RetryPolicy retryPolicy, SocketFactory socketFactory, UserGroupInformation ugi) throws IOException {
     protobuf = new ProtobufProxy<>(
         conf, ugi, hostname, port, retryPolicy, socketFactory, LlapPluginProtocolPB.class);
   }

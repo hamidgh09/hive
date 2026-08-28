@@ -36,7 +36,6 @@ import org.apache.hadoop.fs.PathFilter;
 import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hadoop.fs.Trash;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
-import org.apache.hadoop.hdfs.protocol.SnapshotException;
 import org.apache.hadoop.hive.metastore.api.MetaException;
 import org.apache.hadoop.hive.metastore.conf.MetastoreConf;
 import org.apache.hadoop.hive.metastore.conf.MetastoreConf.ConfVars;
@@ -106,12 +105,9 @@ public class FileUtils {
     try {
       result = fs.delete(f, true);
 
-    } catch (RemoteException | SnapshotException se) {
-      // If this is snapshot exception or the cause is snapshot replication from HDFS, could be the case where the
-      // snapshots were created by replication, so in that case attempt to delete the replication related snapshots,
-      // if the exists and then re attempt delete.
-      if (se instanceof SnapshotException || se.getCause() instanceof SnapshotException || se.getMessage()
-          .contains("Snapshot"))
+    } catch (RemoteException se) {
+      // If the cause is snapshot replication from HDFS, attempt to delete the replication related snapshots
+      if (se.getMessage() != null && se.getMessage().contains("Snapshot"))
         deleteReplRelatedSnapshots(fs, f);
       // retry delete after attempting to delete replication related snapshots
       result = fs.delete(f, true);

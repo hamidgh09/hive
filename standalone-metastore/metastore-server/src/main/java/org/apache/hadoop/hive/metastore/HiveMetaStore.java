@@ -40,6 +40,8 @@ import org.apache.hadoop.hive.metastore.metrics.JvmPauseMonitor;
 import org.apache.hadoop.hive.metastore.metrics.Metrics;
 import org.apache.hadoop.hive.metastore.security.HadoopThriftAuthBridge;
 import org.apache.hadoop.hive.metastore.security.MetastoreDelegationTokenManager;
+import org.apache.hadoop.hive.metastore.security.TSSLBasedProcessor;
+import org.apache.hadoop.hive.metastore.security.TUGIContainingTransport;
 import org.apache.hadoop.hive.metastore.utils.LogUtils;
 import org.apache.hadoop.hive.metastore.utils.MetaStoreUtils;
 import org.apache.hadoop.hive.metastore.utils.MetastoreVersionInfo;
@@ -100,6 +102,9 @@ import java.util.concurrent.locks.ReentrantLock;
 import javax.servlet.Servlet;
 import javax.servlet.ServletRequestEvent;
 import javax.servlet.ServletRequestListener;
+import io.hops.security.CertificateLocalizationCtx;
+import io.hops.security.CertificateLocalizationService;
+import org.apache.hadoop.service.ServiceStateException;
 /**
  * TODO:pc remove application logic to a separate interface.
  */
@@ -119,6 +124,7 @@ public class HiveMetaStore extends ThriftHiveMetastore {
   static HadoopThriftAuthBridge.Server saslServer;
   private static MetastoreDelegationTokenManager delegationTokenManager;
   static boolean useSasl;
+  private static CertificateLocalizationService certLocService;
 
   private static ZooKeeperHiveHelper zooKeeperHelper = null;
   private static String msHost = null;
@@ -547,7 +553,27 @@ public class HiveMetaStore extends ThriftHiveMetastore {
       }
     }
     
-    if (!useSSL) {
+    boolean hopsTLS = MetastoreConf.getBoolVar(conf, ConfVars.METASTORE_HOPS_HIVE_TLS) &&
+        conf.getBoolean("ipc.server.ssl.enabled", false);
+    if (hopsTLS) {
+      certLocService = new CertificateLocalizationService(
+          CertificateLocalizationService.ServiceType.HM);
+      certLocService.init(conf);
+      certLocService.start();
+      CertificateLocalizationCtx.getInstance().setCertificateLocalization(certLocService);
+      Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+        try { certLocService.stop(); } catch (Exception e) { LOG.warn("CertLocService stop error", e); }
+      }));
+      serverSocket = TServerSocketFactory.getServerSocket(conf, TServerSocketFactory.TSocketType.TWOWAYTLS,
+          msHost, port);
+      if (!useSasl) {
+        // Bind the caller identity to the CN of the client certificate: set_ugi is only
+        // accepted after the declared user is authenticated against the TLS peer certificate.
+        processor = new TSSLBasedProcessor<>(handler, conf);
+        transFactory = new TUGIContainingTransport.Factory();
+        LOG.info("Starting DB backed MetaStore Server with Hops TLS certificate-bound identity");
+      }
+    } else if (!useSSL) {
       serverSocket = SecurityUtils.getServerSocket(msHost, port);
     } else {
       String keyStorePath = MetastoreConf.getVar(conf, ConfVars.SSL_KEYSTORE_PATH).trim();
@@ -615,6 +641,20 @@ public class HiveMetaStore extends ThriftHiveMetastore {
       @Override
       public void deleteContext(ServerContext serverContext, TProtocol tProtocol, TProtocol tProtocol1) {
         Metrics.getOpenConnectionsCounter().dec();
+        // Remove certificates materialized through set_crypto for this connection
+        if (certLocService != null && HMSHandler.getSetCryptoCalled()) {
+          if (tProtocol.getTransport() instanceof TUGIContainingTransport) {
+            UserGroupInformation ugi = ((TUGIContainingTransport) tProtocol.getTransport()).getClientUGI();
+            if (ugi != null) {
+              try {
+                certLocService.removeX509Material(ugi.getUserName(), ugi.getApplicationId());
+              } catch (Exception e) {
+                LOG.warn("Could not remove X509 material for UGI: " + ugi, e);
+              }
+            }
+          }
+          HMSHandler.removeSetCryptoCalled();
+        }
         // If the IMetaStoreClient#close was called, HMSHandler#shutdown would have already
         // cleaned up thread local RawStore. Otherwise, do it now.
         HMSHandler.cleanupHandlerContext();

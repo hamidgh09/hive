@@ -1,0 +1,187 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Hops unit tests
+
+# Apache's build.yml only fires on master, and the Jenkins jobs that publish the
+# 4.1 artifacts all pass -DskipTests, so nothing has ever run tests on this line.
+# The full reactor takes over two hours to compile even with tests skipped, so this
+# tests the modules Hops customises rather than everything a PR happens to touch.
+
+on:
+  pull_request:
+    branches:
+      - 'branch-4.1'
+      - 'hops-4.1.0'
+  workflow_dispatch:
+    inputs:
+      modules:
+        description: 'Maven module paths to test, space separated (default: the in-scope modules this branch changes)'
+        required: false
+        type: string
+
+concurrency:
+  group: hops-unit-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # full history so the merge base with the target branch is available
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Select modules
+        id: select
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # The modules Hops actually customises, whose suites finish in minutes and
+          # which hold the Hops-authored tests (TestHopsLocationResolver,
+          # TestTSSLBasedProcessor, TestHiveConf). Everything else is deliberately out of
+          # scope: a port PR touches nearly every module, so selecting purely on the diff
+          # would pull in ql and llap-server and run for hours.
+          ALLOWED="common serde service shims/common shims/0.23
+                   standalone-metastore/metastore-common
+                   standalone-metastore/metastore-server"
+
+          if [ -n "${{ github.event.inputs.modules }}" ]; then
+            MODULES="${{ github.event.inputs.modules }}"
+          else
+            BASE="origin/${{ github.base_ref }}"
+            git fetch --no-tags origin "${{ github.base_ref }}"
+            CHANGED=$(git diff --name-only "$(git merge-base "$BASE" HEAD)" HEAD)
+
+            # Map each changed file to the nearest enclosing Maven module, then keep only
+            # the ones in scope. A PR confined to common therefore tests just common.
+            TOUCHED=""
+            for f in $CHANGED; do
+              d=$(dirname "$f")
+              while [ "$d" != "." ] && [ ! -f "$d/pom.xml" ]; do d=$(dirname "$d"); done
+              case " $TOUCHED " in *" $d "*) ;; *) TOUCHED="$TOUCHED $d" ;; esac
+            done
+
+            MODULES=""
+            for m in $ALLOWED; do
+              case " $TOUCHED " in *" $m "*) MODULES="$MODULES $m" ;; esac
+            done
+          fi
+
+          MODULES=$(echo "$MODULES" | xargs || true)
+          # Nothing in scope changed: still smoke-test the module holding HiveConf rather
+          # than reporting a green run that verified nothing.
+          [ -z "$MODULES" ] && MODULES="common"
+          echo "Testing modules: $MODULES"
+          echo "modules=$MODULES" >> "$GITHUB_OUTPUT"
+          echo "pl=$(echo "$MODULES" | tr ' ' ',')" >> "$GITHUB_OUTPUT"
+
+      - name: Write Maven settings
+        shell: bash
+        env:
+          NEXUS_USER: ${{ secrets.NEXUS_USER }}
+          NEXUS_PASS: ${{ secrets.NEXUS_PASS }}
+          NEXUS_HARBOR_USER: ${{ vars.NEXUS_HARBOR_USER }}
+          NEXUS_HARBOR_PASSWORD: ${{ secrets.NEXUS_HARBOR_PASSWORD }}
+          CENTRAL_MIRROR_URL: ${{ vars.NEXUS_CENTRAL_MIRROR_URL }}
+        run: |
+          set -euo pipefail
+          # Two credential pairs are in use across the org: hopsworks-ee reads
+          # NEXUS_USER/NEXUS_PASS, docker-images reads NEXUS_HARBOR_USER/PASSWORD. Either
+          # opens the same Nexus, so take whichever this repo has been granted.
+          NEXUS_U="${NEXUS_USER:-${NEXUS_HARBOR_USER:-}}"
+          NEXUS_P="${NEXUS_PASS:-${NEXUS_HARBOR_PASSWORD:-}}"
+          if [ -z "$NEXUS_U" ] || [ -z "$NEXUS_P" ]; then
+            echo "::error::No Nexus credentials. Grant this repository either" \
+                 "NEXUS_USER + NEXUS_PASS or NEXUS_HARBOR_USER + NEXUS_HARBOR_PASSWORD;" \
+                 "io.hops artifacts are private and resolution fails with 401 without them."
+            exit 1
+          fi
+
+          # An empty mirror url would emit <url></url> and break every lookup, so the
+          # central mirror is only written when one is configured. It exists to keep
+          # Maven Central from rate limiting the runner (HWORKS-3044).
+          CENTRAL_MIRROR_XML=""
+          if [ -n "${CENTRAL_MIRROR_URL:-}" ]; then
+            CENTRAL_MIRROR_XML="<mirror><id>hops-central</id><url>${CENTRAL_MIRROR_URL}</url><mirrorOf>central</mirrorOf></mirror>"
+          fi
+
+          servers=""
+          for id in HopsEE Hops HopsHive hops-releases hive-releases hops-central Hive; do
+            servers="${servers}<server><id>${id}</id><username>${NEXUS_U}</username><password>${NEXUS_P}</password></server>"
+          done
+
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml <<EOF
+          <settings>
+            <servers>${servers}</servers>
+            <mirrors>
+              <!--
+                Druid's poms declare repository.jboss.org over plain http, which Maven
+                3.8.1+ blocks outright. org.hyperic:sigar exists only there, so point the
+                same repository id at its https URL.
+              -->
+              <mirror>
+                <id>jboss-public-https</id>
+                <url>https://repository.jboss.org/nexus/content/groups/public/</url>
+                <mirrorOf>repository.jboss.org</mirrorOf>
+              </mirror>
+              ${CENTRAL_MIRROR_XML}
+            </mirrors>
+          </settings>
+          EOF
+
+      - name: Cache Maven repository
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-hops-hive-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-hops-hive-
+
+      - name: Build dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          # -am pulls in the reactor dependencies of the selected modules; their tests
+          # are skipped here so the next step only reports on what the PR touched.
+          mvn -B -ntp -pl "${{ steps.select.outputs.pl }}" -am install \
+            -DskipTests -Denforcer.skip=true -Dmaven.javadoc.skip=true
+
+      - name: Run tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          mvn -B -ntp -pl "${{ steps.select.outputs.pl }}" test \
+            -Denforcer.skip=true
+
+      - name: Publish test report
+        uses: mikepenz/action-junit-report@v4
+        if: always()
+        with:
+          report_paths: '**/target/surefire-reports/TEST-*.xml'
+          check_name: 'Hops unit test results'
+          fail_on_failure: true

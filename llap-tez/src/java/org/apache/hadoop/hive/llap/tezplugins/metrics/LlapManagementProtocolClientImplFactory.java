@@ -44,15 +44,23 @@ public class LlapManagementProtocolClientImplFactory {
   }
 
   public static LlapManagementProtocolClientImplFactory basicInstance(Configuration conf) {
-    return new LlapManagementProtocolClientImplFactory(
-        conf,
-        RetryPolicies.retryUpToMaximumCountWithFixedSleep(5, 3000L, TimeUnit.MILLISECONDS),
-        NetUtils.getDefaultSocketFactory(conf));
+    try {
+      return new LlapManagementProtocolClientImplFactory(
+          conf,
+          RetryPolicies.retryUpToMaximumCountWithFixedSleep(5, 3000L, TimeUnit.MILLISECONDS),
+          NetUtils.getDefaultSocketFactory(conf));
+    } catch (java.io.IOException e) {
+      throw new RuntimeException("Failed to create socket factory", e);
+    }
   }
 
   public LlapManagementProtocolClientImpl create(LlapServiceInstance serviceInstance) {
-    return new LlapManagementProtocolClientImpl(conf, serviceInstance.getHost(),
-        serviceInstance.getManagementPort(), retryPolicy,
-        socketFactory);
+    try {
+      return new LlapManagementProtocolClientImpl(conf, serviceInstance.getHost(),
+          serviceInstance.getManagementPort(), retryPolicy,
+          socketFactory);
+    } catch (java.io.IOException e) {
+      throw new RuntimeException("Failed to create LlapManagementProtocolClientImpl", e);
+    }
   }
 }

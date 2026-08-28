@@ -61,7 +61,7 @@ public class LlapProtocolClientImpl implements LlapProtocolBlockingPB {
   public LlapProtocolClientImpl(Configuration conf, String hostname, int port,
                                 UserGroupInformation ugi,
                                 @Nullable RetryPolicy retryPolicy,
-                                @Nullable SocketFactory socketFactory) {
+                                @Nullable SocketFactory socketFactory) throws java.io.IOException {
     // Technically, methods run on a threadpool that is created externally with the UGI.
     // However, that is brittle, so we'd save the UGI explicitly here.
     this.ugi = ugi;

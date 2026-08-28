@@ -1,0 +1,72 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.hadoop.hive.metastore;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.thrift.transport.TServerSocket;
+import org.apache.thrift.transport.TTransportException;
+
+import java.net.InetSocketAddress;
+import java.util.Arrays;
+import java.util.LinkedList;
+
+
+public class TServerSocketFactory {
+
+    public enum TSocketType {
+      PLAIN,
+      TLS,
+      TWOWAYTLS
+    }
+
+    public static TServerSocket getServerSocket(Configuration conf, TSocketType socketType,
+                                                String hiveHost, int portNum ) throws TTransportException {
+        InetSocketAddress serverAddress = getServerAddress(hiveHost, portNum);
+        switch (socketType) {
+            case PLAIN:
+                return new TServerSocket(serverAddress);
+            default:
+                HopsTLSTSocketFactory.HopsTLSTransportParams params =
+                        new HopsTLSTSocketFactory.HopsTLSTransportParams();
+                params.ifAddress = serverAddress;
+                params.clientAuth = socketType == TSocketType.TWOWAYTLS;
+                params.clientTimeout = 0;
+                params.enabledProtocols = conf.getStrings("hadoop.ssl.enabled.protocols", "TLSv1.2");
+
+                String excludeCiphersConf = conf.get("ssl.server.exclude.cipher.list", "");
+                if (excludeCiphersConf.isEmpty()) {
+                  params.excludeCiphers = new LinkedList<>();
+                } else {
+                  params.excludeCiphers = Arrays.asList(excludeCiphersConf.split(","));
+                }
+
+                return HopsTLSTSocketFactory.getServerSocket(conf, params);
+        }
+    }
+
+    private static InetSocketAddress getServerAddress(String hiveHost, int portNum) {
+        InetSocketAddress serverAddress;
+        if (hiveHost == null || hiveHost.isEmpty()) {
+            // Wildcard bind
+            serverAddress = new InetSocketAddress(portNum);
+        } else {
+            serverAddress = new InetSocketAddress(hiveHost, portNum);
+        }
+        return serverAddress;
+    }
+}

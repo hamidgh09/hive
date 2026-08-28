@@ -61,19 +61,15 @@ import org.apache.hadoop.fs.TrashPolicy;
 import org.apache.hadoop.fs.permission.FsAction;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.hdfs.DFSClient;
-import org.apache.hadoop.hdfs.DFSUtilClient;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
-import org.apache.hadoop.hdfs.MiniDFSNNTopology;
 import org.apache.hadoop.hdfs.client.HdfsAdmin;
 import org.apache.hadoop.hdfs.protocol.DirectoryListing;
 import org.apache.hadoop.hdfs.protocol.EncryptionZone;
 import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicy;
-import org.apache.hadoop.hdfs.protocol.ErasureCodingPolicyInfo;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
 import org.apache.hadoop.hdfs.protocol.HdfsFileStatus;
 import org.apache.hadoop.hdfs.protocol.HdfsLocatedFileStatus;
-import org.apache.hadoop.hdfs.protocol.SnapshotDiffReportListing;
 import org.apache.hadoop.io.LongWritable;
 import org.apache.hadoop.ipc.CallerContext;
 import org.apache.hadoop.mapred.ClusterStatus;
@@ -497,22 +493,10 @@ public class Hadoop23Shims extends HadoopShimsSecure {
       String[] racks,
       boolean isHA) throws IOException {
     configureImpersonation(conf);
-    MiniDFSCluster miniDFSCluster;
-    if (isHA) {
-      MiniDFSNNTopology topo = new MiniDFSNNTopology()
-        .addNameservice(new MiniDFSNNTopology.NSConf("minidfs").addNN(
-          new MiniDFSNNTopology.NNConf("nn1")).addNN(
-          new MiniDFSNNTopology.NNConf("nn2")));
-      miniDFSCluster = new MiniDFSCluster.Builder(conf)
-        .numDataNodes(numDataNodes).format(format)
-        .racks(racks).nnTopology(topo).build();
-      miniDFSCluster.waitActive();
-      miniDFSCluster.transitionToActive(0);
-    } else {
-      miniDFSCluster = new MiniDFSCluster.Builder(conf)
+    // HopsFS does not support NameNode HA; isHA is ignored
+    MiniDFSCluster miniDFSCluster = new MiniDFSCluster.Builder(conf)
         .numDataNodes(numDataNodes).format(format)
         .racks(racks).build();
-    }
 
     // Need to set the client's KeyProvider to the NN's for JKS,
     // else the updates do not get flushed properly
@@ -690,7 +674,7 @@ public class Hadoop23Shims extends HadoopShimsSecure {
 
     @Override
     public Long getFileId() {
-      if (fileId == HdfsConstants.GRANDFATHER_INODE_ID) {
+      if (fileId == -1L) { // HopsFS does not define GRANDFATHER_INODE_ID; -1 is the sentinel value
         return null;
       }
       return fileId;
@@ -1011,8 +995,7 @@ public class Hadoop23Shims extends HadoopShimsSecure {
         throws IOException {
       switch (policy) {
       case MEMORY: {
-        dfs.setStoragePolicy(path, HdfsConstants.MEMORY_STORAGE_POLICY_NAME);
-        break;
+        throw new UnsupportedOperationException("MEMORY storage policy is not supported by HopsFS");
       }
       case SSD: {
         dfs.setStoragePolicy(path, HdfsConstants.ALLSSD_STORAGE_POLICY_NAME);
@@ -1253,33 +1236,8 @@ public class Hadoop23Shims extends HadoopShimsSecure {
    * @return true, if we need to do rdiff.
    */
   private static boolean shouldRdiff(Path p, Configuration conf, String snapshot, boolean overwriteTarget) throws Exception {
-    // Using the configuration in string form since hive-shims doesn't have a dependency on hive-common.
-    boolean targetModified = false;
-    try {
-      DistributedFileSystem dfs = (DistributedFileSystem) p.getFileSystem(conf);
-      // Check if the target got modified
-      SnapshotDiffReportListing snapshotDiff = dfs.getClient()
-          .getSnapshotDiffReportListing(p.toUri().getPath(), snapshot, "", DFSUtilClient.EMPTY_BYTES, -1);
-
-      // If there is even a single entry in these list, we can conclude that the target is modified, and we need to
-      // do a reverse diff.
-      if (snapshotDiff.getCreateList() != null && !snapshotDiff.getCreateList().isEmpty()) {
-        targetModified = true;
-      }
-      if (snapshotDiff.getModifyList() != null && !snapshotDiff.getModifyList().isEmpty()) {
-        targetModified = true;
-      }
-      if (snapshotDiff.getDeleteList() != null && !snapshotDiff.getDeleteList().isEmpty()) {
-        targetModified = true;
-      }
-    } catch (Exception e) {
-      LOG.error("Failed to compute snapshot diff for path: {} and snapshot: {}", p, snapshot);
-    }
-    if (targetModified && !overwriteTarget) {
-      throw new Exception(
-          "The target modified during snapshot based data copy for path: " + p + " and snapshot: " + snapshot);
-    }
-    return targetModified;
+    // HopsFS DFSClient does not support getSnapshotDiffReportListing; skip rdiff check
+    return false;
   }
 
   public boolean runDistCpWithSnapshotsAs(String oldSnapshot, String newSnapshot, List<Path> srcPaths, Path dst,
@@ -1333,10 +1291,9 @@ public class Hadoop23Shims extends HadoopShimsSecure {
 
     public static HdfsEncryptionShim createInstance(URI uri, Configuration conf) throws IOException {
       HdfsAdmin hadmin = new HdfsAdmin(uri, conf);
-      KeyProvider keyP = hadmin.getKeyProvider();
       HdfsEncryptionShim hdfsEncryptionShim = new HdfsEncryptionShim(conf);
       hdfsEncryptionShim.hdfsAdmin = hadmin;
-      hdfsEncryptionShim.keyProvider = keyP;
+      // HopsFS HdfsAdmin does not expose getKeyProvider(); keyProvider remains null
       return hdfsEncryptionShim;
     }
 
@@ -1712,74 +1669,39 @@ public class Hadoop23Shims extends HadoopShimsSecure {
      */
     @Override
     public List<HdfsFileErasureCodingPolicy> getAllErasureCodingPolicies() throws IOException {
-      ErasureCodingPolicyInfo[] erasureCodingPolicies = hdfsAdmin.getErasureCodingPolicies();
-      List<HdfsFileErasureCodingPolicy> policies = new ArrayList<>(erasureCodingPolicies.length);
-      for (ErasureCodingPolicyInfo erasureCodingPolicy : erasureCodingPolicies) {
-        policies.add(new HdfsFileErasureCodingPolicyImpl(erasureCodingPolicy.getPolicy().getName(),
-            erasureCodingPolicy.getState().toString()));
-      }
-      return policies;
+      // HopsFS does not support erasure coding
+      return java.util.Collections.emptyList();
     }
 
-
-    /**
-     * Enable an erasure coding policy.
-     * @param ecPolicyName the name of the erasure coding policy
-     */
     @Override
-    public void enableErasureCodingPolicy(String ecPolicyName)  throws IOException {
-      hdfsAdmin.enableErasureCodingPolicy(ecPolicyName);
+    public void enableErasureCodingPolicy(String ecPolicyName) throws IOException {
+      throw new UnsupportedOperationException("Erasure coding is not supported by HopsFS");
     }
 
-    /**
-     * Sets an erasure coding policy on a directory at the specified path.
-     * @param path a directory in HDFS
-     * @param ecPolicyName the name of the erasure coding policy
-     */
     @Override
     public void setErasureCodingPolicy(Path path, String ecPolicyName) throws IOException {
-      hdfsAdmin.setErasureCodingPolicy(path, ecPolicyName);
+      throw new UnsupportedOperationException("Erasure coding is not supported by HopsFS");
     }
 
-    /**
-     * Get details of the erasure coding policy of a file or directory at the specified path.
-     * @param path an hdfs file or directory
-     * @return an erasure coding policy
-     */
     @Override
     public HdfsFileErasureCodingPolicy getErasureCodingPolicy(Path path) throws IOException {
-      ErasureCodingPolicy erasureCodingPolicy = hdfsAdmin.getErasureCodingPolicy(path);
-      if (erasureCodingPolicy == null) {
-        return null;
-      }
-      return new HdfsFileErasureCodingPolicyImpl(erasureCodingPolicy.getName());
+      // HopsFS does not support erasure coding
+      return null;
     }
 
-    /**
-     * Unset an erasure coding policy set by a previous call to setPolicy on a directory.
-     * @param path a directory in HDFS
-     */
     @Override
     public void unsetErasureCodingPolicy(Path path) throws IOException {
-      hdfsAdmin.unsetErasureCodingPolicy(path);
+      throw new UnsupportedOperationException("Erasure coding is not supported by HopsFS");
     }
 
-    /**
-     * Remove an erasure coding policy.
-     * @param ecPolicyName the name of the erasure coding policy
-     */
     @Override
     public void removeErasureCodingPolicy(String ecPolicyName) throws IOException {
-      hdfsAdmin.removeErasureCodingPolicy(ecPolicyName);
+      throw new UnsupportedOperationException("Erasure coding is not supported by HopsFS");
     }
 
-    /**
-     * Disable an erasure coding policy.
-     * @param ecPolicyName the name of the erasure coding policy
-     */
     @Override
     public void disableErasureCodingPolicy(String ecPolicyName) throws IOException {
-      hdfsAdmin.disableErasureCodingPolicy(ecPolicyName);
+      throw new UnsupportedOperationException("Erasure coding is not supported by HopsFS");
     }
 
     /**

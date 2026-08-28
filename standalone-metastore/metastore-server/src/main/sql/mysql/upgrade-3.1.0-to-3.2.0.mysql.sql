@@ -17,7 +17,13 @@ CREATE TABLE TXN_WRITE_NOTIFICATION_LOG (
 INSERT INTO `SEQUENCE_TABLE` (`SEQUENCE_NAME`, `NEXT_VAL`) VALUES ('org.apache.hadoop.hive.metastore.model.MTxnWriteNotificationLog', 1);
 
 -- HIVE-20221
-ALTER TABLE PARTITION_PARAMS MODIFY PARAM_VALUE MEDIUMTEXT;
+-- NDB does not allow ON DELETE CASCADE foreign keys on child tables containing
+-- TEXT/BLOB columns (NDB error 21034), so the Hopsworks cascade FK must be dropped
+-- before PARAM_VALUE becomes MEDIUMTEXT. This matches how the Hopsworks schema
+-- already treats TABLE_PARAMS, SD_PARAMS and SERDE_PARAMS (mediumtext, no FK);
+-- HMS deletes param rows explicitly, so integrity does not depend on the FK.
+ALTER TABLE PARTITION_PARAMS DROP FOREIGN KEY PARTITION_PARAMS_FK1;
+ALTER TABLE PARTITION_PARAMS MODIFY PARAM_VALUE MEDIUMTEXT CHARACTER SET latin1 COLLATE latin1_general_cs;
 
 -- HIVE-21077
 ALTER TABLE `DBS` ADD `CREATE_TIME` INT(11);

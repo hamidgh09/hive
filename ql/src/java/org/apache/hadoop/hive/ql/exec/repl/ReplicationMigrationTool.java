@@ -37,7 +37,6 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -48,7 +47,6 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
-import static org.apache.hadoop.hdfs.protocol.OpenFilesIterator.OpenFilesType.ALL_OPEN_FILES;
 
 public class ReplicationMigrationTool implements Tool {
 
@@ -257,14 +255,8 @@ public class ReplicationMigrationTool implements Tool {
     if (srcFileSystem instanceof DistributedFileSystem) {
       DistributedFileSystem srcDFS = (DistributedFileSystem) srcPath.getFileSystem(conf);
       // If there is even single open file we can abort.
-      if (srcDFS.listOpenFiles(EnumSet.of(ALL_OPEN_FILES), Path.getPathWithoutSchemeAndAuthority(srcPath).toString())
-          .hasNext()) {
-        System.err.println("There are open files in " + srcPath);
-        return false;
-      } else {
-        LOG.error("Open file check is ignored since the source filesystem is not of type of "
-            + "DistributedFileSystem. The source file system is of " + srcFileSystem.getClass() + " type.");
-      }
+      // listOpenFiles not available in HopsFS - skip open file check
+      LOG.warn("listOpenFiles is not supported in HopsFS, skipping open file check for {}", srcPath);
     }
     return true;
   }

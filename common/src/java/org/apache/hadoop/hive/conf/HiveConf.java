@@ -4255,7 +4255,8 @@ public class HiveConf extends Configuration {
 
     // HiveServer2 auth configuration
     HIVE_SERVER2_AUTHENTICATION("hive.server2.authentication", "NONE",
-      new StringSet("NOSASL", "NONE", "LDAP", "KERBEROS", "PAM", "CUSTOM", "SAML", "JWT"),
+      new StringSet("NOSASL", "NONE", "LDAP", "KERBEROS", "PAM", "CUSTOM", "SAML", "JWT",
+          "CERTIFICATES", "HOPS", "EXTERNAL"),
         "Client authentication types.\n" +
         "  NONE: no authentication check\n" +
         "  LDAP: LDAP/AD based authentication\n" +
@@ -4266,7 +4267,13 @@ public class HiveConf extends Configuration {
         "  NOSASL:  Raw transport\n" +
         "  SAML: SAML 2.0 compliant authentication. This is only supported in http transport mode.\n" +
         "  JWT: JWT based authentication. HS2 expects JWT contains the user name as subject and was signed by an\n" +
-        "       asymmetric key. This is only supported in http transport mode."),
+        "       asymmetric key. This is only supported in http transport mode.\n" +
+        "  CERTIFICATES: Authenticate using the CN of the client X.509 certificate\n" +
+        "  HOPS: Certificate + Password authentication\n" +
+        "  EXTERNAL: Hops external users password authentication"),
+    HIVE_SUPER_USER("hive.superuser", "hive", "The user to use to create databases"),
+    HIVE_SUPERUSER_ALLOWED_IMPERSONATION("hive.superuser.impersonation-users", "",
+        "Users that are allowed to impersonate the Hive superuser"),
     HIVE_SERVER2_TRUSTED_DOMAIN("hive.server2.trusted.domain", "",
         "Specifies the host or a domain to trust connections from. Authentication is skipped " +
         "for any connection coming from a host whose hostname ends with the value of this" +
@@ -5678,7 +5685,16 @@ public class HiveConf extends Configuration {
         + ",hive.zookeeper.ssl.keystore.location"
         + ",hive.zookeeper.ssl.keystore.password"
         + ",hive.zookeeper.ssl.truststore.location"
-        + ",hive.zookeeper.ssl.truststore.password",
+        + ",hive.zookeeper.ssl.truststore.password"
+        + "," + HIVE_SUPER_USER.varname
+        + "," + HIVE_SUPERUSER_ALLOWED_IMPERSONATION.varname
+        // JWT properties in ssl-server.xml should not be exposed
+        + ",hops.jwt-manager.master-token"
+        + ",hops.jwt-manager.renew-token-0"
+        + ",hops.jwt-manager.renew-token-1"
+        + ",hops.jwt-manager.renew-token-2"
+        + ",hops.jwt-manager.renew-token-3"
+        + ",hops.jwt-manager.renew-token-4",
         "Comma separated list of configuration options which should not be read by normal user like passwords"),
     HIVE_CONF_INTERNAL_VARIABLE_LIST("hive.conf.internal.variable.list",
         "hive.added.files.path,hive.added.jars.path,hive.added.archives.path",

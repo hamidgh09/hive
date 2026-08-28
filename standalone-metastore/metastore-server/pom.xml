@@ -15,7 +15,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
     <artifactId>hive-standalone-metastore</artifactId>
-    <groupId>org.apache.hive</groupId>
+    <groupId>io.hops.hive</groupId>
     <version>4.1.0</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
@@ -26,12 +26,12 @@
   </properties>
   <dependencies>
     <dependency>
-      <groupId>org.apache.hive</groupId>
+      <groupId>io.hops.hive</groupId>
       <artifactId>hive-standalone-metastore-common</artifactId>
       <version>${hive.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.apache.hive</groupId>
+      <groupId>io.hops.hive</groupId>
       <artifactId>hive-metastore</artifactId>
       <version>${hive.version}</version>
       <scope>test</scope>
@@ -61,7 +61,7 @@
           <artifactId>hadoop-common</artifactId>
         </exclusion>
         <exclusion>
-          <groupId>org.apache.hive</groupId>
+          <groupId>io.hops.hive</groupId>
           <artifactId>hive-storage-api</artifactId>
         </exclusion>
       </exclusions>
@@ -83,6 +83,12 @@
     <dependency>
       <groupId>com.github.joshelser</groupId>
       <artifactId>dropwizard-metrics-hadoop-metrics2-reporter</artifactId>
+      <exclusions>
+        <exclusion>
+          <groupId>org.apache.hadoop</groupId>
+          <artifactId>hadoop-common</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>com.google.guava</groupId>
@@ -99,6 +105,11 @@
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-dbcp2</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-math3</artifactId>
+      <version>3.6.1</version>
     </dependency>
     <dependency>
       <groupId>io.dropwizard.metrics</groupId>
@@ -125,7 +136,7 @@
       <artifactId>commons-lang3</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>io.hops</groupId>
       <artifactId>hadoop-common</artifactId>
       <optional>true</optional>
       <exclusions>
@@ -156,12 +167,12 @@
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>io.hops</groupId>
       <artifactId>hadoop-distcp</artifactId>
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>io.hops</groupId>
       <artifactId>hadoop-hdfs</artifactId>
       <optional>true</optional>
       <exclusions>
@@ -188,7 +199,7 @@
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>io.hops</groupId>
       <artifactId>hadoop-hdfs-client</artifactId>
       <optional>true</optional>
       <exclusions>
@@ -211,7 +222,7 @@
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>io.hops</groupId>
       <artifactId>hadoop-mapreduce-client-core</artifactId>
       <optional>true</optional>
       <exclusions>
@@ -254,7 +265,7 @@
     </dependency>
     <!-- This is our one and only Hive dependency.-->
     <dependency>
-      <groupId>org.apache.hive</groupId>
+      <groupId>io.hops.hive</groupId>
       <artifactId>hive-storage-api</artifactId>
       <version>${storage-api.version}</version>
     </dependency>

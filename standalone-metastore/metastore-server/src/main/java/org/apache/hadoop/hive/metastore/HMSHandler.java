@@ -70,6 +70,8 @@ import org.apache.hadoop.hive.metastore.utils.MetaStoreUtils;
 import org.apache.hadoop.hive.metastore.utils.MetastoreVersionInfo;
 import org.apache.hadoop.hive.metastore.utils.SecurityUtils;
 import org.apache.hadoop.security.UserGroupInformation;
+import io.hops.security.CertificateLocalization;
+import io.hops.security.CertificateLocalizationCtx;
 import org.apache.hadoop.util.ReflectionUtils;
 import org.apache.thrift.TException;
 import org.slf4j.Logger;
@@ -254,6 +256,19 @@ public class HMSHandler extends FacebookBase implements IHMSHandler {
     return HMSHandlerContext.getIpAddress().orElse(null);
   }
 
+  // Tracks whether set_crypto materialized certificates on the connection served by this
+  // thread, so HiveMetaStore can remove them when the connection is closed.
+  private static final ThreadLocal<Boolean> tlsSetCryptoCalled =
+      ThreadLocal.withInitial(() -> Boolean.FALSE);
+
+  static boolean getSetCryptoCalled() {
+    return tlsSetCryptoCalled.get();
+  }
+
+  static void removeSetCryptoCalled() {
+    tlsSetCryptoCalled.remove();
+  }
+
   // Make it possible for tests to check that the right type of PartitionExpressionProxy was
   // instantiated.
   @VisibleForTesting
@@ -311,6 +326,7 @@ public class HMSHandler extends FacebookBase implements IHMSHandler {
 
   @Override
   public void init() throws MetaException {
+    warnAboutObsoleteHopsConf();
     Metrics.initialize(conf);
     initListeners = MetaStoreServerUtils.getMetaStoreListeners(
         MetaStoreInitListener.class, conf, MetastoreConf.getVar(conf, ConfVars.INIT_HOOKS));
@@ -390,6 +406,33 @@ public class HMSHandler extends FacebookBase implements IHMSHandler {
     }
     dataconnectorFactory = DataConnectorProviderFactory.getInstance(this);
   }
+
+  /**
+   * Hops inode-level metadata consistency (SDS rows tied to hops.hdfs_inodes by an
+   * ON DELETE CASCADE foreign key) does not exist in Hive 4.x: the schema no longer carries the
+   * inode reference and the upgrade to 4.1 drops the constraint. The settings that used to
+   * control it therefore have no effect any more, and are reported here rather than being
+   * ignored in silence, because a deployment that carries them expects a guarantee it no longer
+   * gets: a table directory removed directly in HopsFS now leaves its metastore rows behind.
+   */
+  private void warnAboutObsoleteHopsConf() {
+    for (String obsolete : OBSOLETE_HOPS_CONF) {
+      if (conf.get(obsolete) != null) {
+        LOG.warn("Ignoring obsolete configuration '{}': Hops inode-level metadata consistency is "
+            + "no longer implemented, metastore rows are not removed when the corresponding "
+            + "HopsFS directory is deleted outside of the metastore.", obsolete);
+      }
+    }
+  }
+
+  private static final String[] OBSOLETE_HOPS_CONF = {
+      "hops.metadata.consistent",
+      "hops.db.ConnectionURL",
+      "hops.root.dir.partition_key",
+      "hops.root.dir.depth",
+      "hops.root.inode.id",
+      "hops.random.partitioning.level"
+  };
 
   /**
    *
@@ -8720,6 +8763,35 @@ public class HMSHandler extends FacebookBase implements IHMSHandler {
   public List<String> set_ugi(String username, List<String> groupNames) throws TException {
     Collections.addAll(groupNames, username);
     return groupNames;
+  }
+
+  @Override
+  public void set_crypto(java.nio.ByteBuffer keyStore, String keyStorePassword,
+      java.nio.ByteBuffer trustStore, String trustStorePassword, boolean update) throws MetaException {
+    if (keyStore == null || trustStore == null ||
+        keyStorePassword == null || keyStorePassword.isEmpty() ||
+        trustStorePassword == null || trustStorePassword.isEmpty()) {
+      throw new MetaException("Crypto material not set correctly");
+    }
+    try {
+      String uname = UserGroupInformation.getCurrentUser().getUserName();
+      String appId = UserGroupInformation.getCurrentUser().getApplicationId();
+      CertificateLocalization certLocSvc =
+          CertificateLocalizationCtx.getInstance().getCertificateLocalization();
+      if (certLocSvc == null) {
+        LOG.warn("set_crypto called but CertificateLocalizationService is not running");
+        return;
+      }
+      if (update) {
+        certLocSvc.updateX509(uname, appId, keyStore, keyStorePassword, trustStore, trustStorePassword);
+      } else {
+        certLocSvc.materializeCertificates(uname, appId, uname, keyStore, keyStorePassword,
+            trustStore, trustStorePassword);
+      }
+      tlsSetCryptoCalled.set(Boolean.TRUE);
+    } catch (java.io.IOException | InterruptedException e) {
+      throw new MetaException(e.getMessage());
+    }
   }
 
   @Override

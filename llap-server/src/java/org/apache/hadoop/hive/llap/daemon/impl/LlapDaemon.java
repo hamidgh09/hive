@@ -321,7 +321,11 @@ public class LlapDaemon extends CompositeService implements ContainerRunner, Lla
         " sessionId: " + sessionId);
 
     int maxAmReporterThreads = HiveConf.getIntVar(daemonConf, ConfVars.LLAP_DAEMON_AM_REPORTER_MAX_THREADS);
-    this.socketFactory = NetUtils.getDefaultSocketFactory(daemonConf);
+    try {
+      this.socketFactory = NetUtils.getDefaultSocketFactory(daemonConf);
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to initialize socket factory", e);
+    }
     this.amReporter = new AMReporter(numExecutors, maxAmReporterThreads, srvAddress,
         new QueryFailedHandlerProxy(), daemonConf, daemonId, socketFactory);
 

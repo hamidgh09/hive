@@ -61,7 +61,7 @@ public class TSetIpAddressProcessor<I extends Iface> extends TCLIService.Process
     }
   }
 
-  private void setUserName(final TProtocol in) {
+  protected void setUserName(final TProtocol in) throws TException {
     TTransport transport = in.getTransport();
     if (transport instanceof TSaslServerTransport) {
       String userName = ((TSaslServerTransport) transport).getSaslServer().getAuthorizationID();
@@ -114,5 +114,9 @@ public class TSetIpAddressProcessor<I extends Iface> extends TCLIService.Process
 
   public static String getUserName() {
     return THREAD_LOCAL_USER_NAME.get();
+  }
+
+  public static void setUserNameForCurrentThread(String name) {
+    THREAD_LOCAL_USER_NAME.set(name);
   }
 }

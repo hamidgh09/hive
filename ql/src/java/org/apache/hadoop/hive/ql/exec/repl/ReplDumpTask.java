@@ -23,7 +23,6 @@ import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hdfs.protocol.SnapshotException;
 import org.apache.hadoop.hive.common.FileUtils;
 import org.apache.hadoop.hive.common.ValidTxnList;
 import org.apache.hadoop.hive.common.ValidWriteIdList;
@@ -357,7 +356,7 @@ public class ReplDumpTask extends Task<ReplDumpWork> implements Serializable {
     } catch (Exception e) {
       setException(e);
       int errorCode;
-      if (e instanceof SnapshotException) {
+      if (e instanceof IOException) {
         errorCode = ErrorMsg.getErrorMsg("SNAPSHOT_ERROR").getErrorCode();
       } else {
         errorCode = ErrorMsg.getErrorMsg(e.getMessage()).getErrorCode();

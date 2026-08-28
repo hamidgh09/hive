@@ -27,6 +27,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.hadoop.hive.common.auth.HiveAuthUtils;
+import org.apache.hadoop.hive.common.auth.TServerSocketFactory;
 import org.apache.hadoop.hive.common.metrics.common.Metrics;
 import org.apache.hadoop.hive.common.metrics.common.MetricsConstant;
 import org.apache.hadoop.hive.common.metrics.common.MetricsFactory;
@@ -34,6 +35,7 @@ import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars;
 import org.apache.hadoop.hive.conf.HiveServer2TransportMode;
 import org.apache.hadoop.hive.shims.ShimLoader;
+import org.apache.hive.service.auth.HiveAuthConstants;
 import org.apache.hive.service.auth.HiveAuthFactory;
 import org.apache.hive.service.cli.CLIService;
 import org.apache.hive.service.cli.HiveSQLException;
@@ -79,11 +81,26 @@ public class ThriftBinaryCLIService extends ThriftCLIService {
       TTransportFactory transportFactory = hiveAuthFactory.getAuthTransFactory();
       TProcessorFactory processorFactory = hiveAuthFactory.getAuthProcFactory(this);
       TServerSocket serverSocket = null;
+      String authTypeStr = hiveConf.getVar(ConfVars.HIVE_SERVER2_AUTHENTICATION);
+      boolean certificateAuth =
+          authTypeStr.equalsIgnoreCase(HiveAuthConstants.AuthTypes.CERTIFICATES.getAuthName())
+              || authTypeStr.equalsIgnoreCase(HiveAuthConstants.AuthTypes.HOPS.getAuthName());
+      boolean hopsTLS = hiveConf.getBoolean("ipc.server.ssl.enabled", false) && certificateAuth;
+      if (certificateAuth && !hopsTLS) {
+        // These auth types take the client identity from the peer certificate, which only exists
+        // on a two-way TLS connection. Refuse to start rather than listen on a plain socket
+        // where no certificate can be presented and no client can be authenticated.
+        throw new IllegalArgumentException("hive.server2.authentication=" + authTypeStr
+            + " requires Hops two-way TLS, set ipc.server.ssl.enabled to true");
+      }
       List<String> sslVersionBlacklist = new ArrayList<String>();
       for (String sslVersion : hiveConf.getVar(ConfVars.HIVE_SSL_PROTOCOL_BLACKLIST).split(",")) {
         sslVersionBlacklist.add(sslVersion);
       }
-      if (!hiveConf.getBoolVar(ConfVars.HIVE_SERVER2_USE_SSL)) {
+      if (hopsTLS) {
+        serverSocket = TServerSocketFactory.getServerSocket(hiveConf,
+            TServerSocketFactory.TSocketType.TWOWAYTLS, hiveHost, portNum);
+      } else if (!hiveConf.getBoolVar(ConfVars.HIVE_SERVER2_USE_SSL)) {
         serverSocket = HiveAuthUtils.getServerSocket(hiveHost, portNum);
       } else {
         String keyStorePath = hiveConf.getVar(ConfVars.HIVE_SERVER2_SSL_KEYSTORE_PATH).trim();

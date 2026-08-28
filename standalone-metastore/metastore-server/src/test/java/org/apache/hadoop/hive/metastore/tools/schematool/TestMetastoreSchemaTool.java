@@ -36,6 +36,8 @@ import static org.junit.Assert.assertTrue;
 @Category(MetastoreUnitTest.class)
 public class TestMetastoreSchemaTool {
 
+  private static final String MYSQL_ENGINE_TYPE_CONF = "datanucleus.rdbms.mysql.engineType";
+
   private String scriptFile = System.getProperty("java.io.tmpdir") + File.separator + "someScript.sql";
   @Mock
   private Configuration conf;
@@ -68,5 +70,48 @@ public class TestMetastoreSchemaTool {
   public void shouldReturnActualPassword() throws IOException {
     String[] strings = builder.buildToRun();
     assertTrue(Arrays.asList(strings).contains(password));
+  }
+
+  @Test
+  public void mysqlParserShouldKeepInnoDbEngineByDefault() {
+    HiveSchemaHelper.NestedScriptParser parser = HiveSchemaHelper.getDbCommandParser(
+        HiveSchemaHelper.DB_MYSQL, null, null, null, conf, null, true);
+
+    String command = parser.cleanseCommand("CREATE TABLE T (ID INT) ENGINE=InnoDB DEFAULT CHARSET=latin1;");
+
+    assertTrue(command.contains("ENGINE=InnoDB"));
+  }
+
+  @Test
+  public void mysqlParserShouldUseConfiguredEngine() {
+    conf.set(MYSQL_ENGINE_TYPE_CONF, "ndbcluster");
+    HiveSchemaHelper.NestedScriptParser parser = HiveSchemaHelper.getDbCommandParser(
+        HiveSchemaHelper.DB_MYSQL, null, null, null, conf, null, true);
+
+    String command = parser.cleanseCommand("CREATE TABLE T (ID INT) ENGINE=InnoDB DEFAULT CHARSET=latin1;");
+
+    assertTrue(command.contains("ENGINE=ndbcluster"));
+    assertFalse(command.contains("ENGINE=InnoDB"));
+  }
+
+  @Test
+  public void mysqlParserShouldUseConfiguredEngineForUppercaseInnoDb() {
+    conf.set(MYSQL_ENGINE_TYPE_CONF, "NDBCLUSTER");
+    HiveSchemaHelper.NestedScriptParser parser = HiveSchemaHelper.getDbCommandParser(
+        HiveSchemaHelper.DB_MYSQL, null, null, null, conf, null, true);
+
+    String command = parser.cleanseCommand("CREATE TABLE T (ID INT) ENGINE=INNODB DEFAULT CHARSET=latin1;");
+
+    assertTrue(command.contains("ENGINE=NDBCLUSTER"));
+    assertFalse(command.contains("ENGINE=INNODB"));
+  }
+
+  @Test(expected = IllegalArgumentException.class)
+  public void mysqlParserShouldRejectInvalidConfiguredEngine() {
+    conf.set(MYSQL_ENGINE_TYPE_CONF, "ndbcluster; DROP TABLE VERSION");
+    HiveSchemaHelper.NestedScriptParser parser = HiveSchemaHelper.getDbCommandParser(
+        HiveSchemaHelper.DB_MYSQL, null, null, null, conf, null, true);
+
+    parser.cleanseCommand("CREATE TABLE T (ID INT) ENGINE=InnoDB DEFAULT CHARSET=latin1;");
   }
 }

@@ -75,7 +75,7 @@ public class TestContainerRunnerImpl {
   private final DaemonId daemonId = new DaemonId(testUser,
       "ContainerTests", hostname,
       appId, System.currentTimeMillis());
-  private final SocketFactory socketFactory = NetUtils.getDefaultSocketFactory(daemonConf);
+  private SocketFactory socketFactory;
   private QueryTracker queryTracker;
   private TaskExecutorService executorService;
   private InetSocketAddress serverSocket;
@@ -83,6 +83,7 @@ public class TestContainerRunnerImpl {
 
   @Before
   public void setup() throws Exception {
+    socketFactory = NetUtils.getDefaultSocketFactory(daemonConf);
 
     String[] strIntervals = HiveConf.getTrimmedStringsVar(daemonConf,
         HiveConf.ConfVars.LLAP_DAEMON_TASK_PREEMPTION_METRICS_INTERVALS);

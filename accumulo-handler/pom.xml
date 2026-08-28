@@ -15,7 +15,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>org.apache.hive</groupId>
+    <groupId>io.hops.hive</groupId>
     <artifactId>hive</artifactId>
     <version>4.1.0</version>
     <relativePath>../pom.xml</relativePath>
@@ -58,7 +58,7 @@
       <artifactId>accumulo-trace</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.apache.hive</groupId>
+      <groupId>io.hops.hive</groupId>
       <artifactId>hive-common</artifactId>
       <version>${project.version}</version>
       <exclusions>
@@ -73,17 +73,17 @@
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>org.apache.hive</groupId>
+      <groupId>io.hops.hive</groupId>
       <artifactId>hive-metastore</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.apache.hive</groupId>
+      <groupId>io.hops.hive</groupId>
       <artifactId>hive-serde</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.apache.hive</groupId>
+      <groupId>io.hops.hive</groupId>
       <artifactId>hive-service</artifactId>
       <version>${project.version}</version>
       <exclusions>
@@ -102,17 +102,17 @@
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>org.apache.hive</groupId>
+      <groupId>io.hops.hive</groupId>
       <artifactId>hive-udf</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.apache.hive</groupId>
+      <groupId>io.hops.hive</groupId>
       <artifactId>hive-exec</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.apache.hive</groupId>
+      <groupId>io.hops.hive</groupId>
       <artifactId>hive-shims</artifactId>
       <version>${project.version}</version>
     </dependency>
@@ -121,7 +121,7 @@
       <artifactId>slf4j-api</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>io.hops</groupId>
       <artifactId>hadoop-client</artifactId>
       <optional>true</optional>
       <exclusions>
@@ -144,7 +144,7 @@
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>io.hops</groupId>
       <artifactId>hadoop-common</artifactId>
       <optional>true</optional>
       <exclusions>
@@ -171,7 +171,7 @@
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>io.hops</groupId>
       <artifactId>hadoop-mapreduce-client-core</artifactId>
       <optional>true</optional>
     </dependency>
@@ -187,7 +187,7 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.hive</groupId>
+      <groupId>io.hops.hive</groupId>
       <artifactId>hive-exec</artifactId>
       <version>${project.version}</version>
       <classifier>tests</classifier>

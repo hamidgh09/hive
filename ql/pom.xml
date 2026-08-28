@@ -15,7 +15,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <parent>
-    <groupId>org.apache.hive</groupId>
+    <groupId>io.hops.hive</groupId>
     <artifactId>hive</artifactId>
     <version>4.1.0</version>
     <relativePath>../pom.xml</relativePath>
@@ -107,12 +107,12 @@
       <artifactId>commons-math3</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.apache.hive</groupId>
+      <groupId>io.hops.hive</groupId>
       <artifactId>hive-vector-code-gen</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.apache.hive</groupId>
+      <groupId>io.hops.hive</groupId>
       <artifactId>hive-common</artifactId>
       <version>${project.version}</version>
       <exclusions>
@@ -123,47 +123,47 @@
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>org.apache.hive</groupId>
+      <groupId>io.hops.hive</groupId>
       <artifactId>hive-metastore</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.apache.hive</groupId>
+      <groupId>io.hops.hive</groupId>
       <artifactId>hive-serde</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.apache.hive</groupId>
+      <groupId>io.hops.hive</groupId>
       <artifactId>hive-parser</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.apache.hive</groupId>
+      <groupId>io.hops.hive</groupId>
       <artifactId>hive-udf</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.apache.hive</groupId>
+      <groupId>io.hops.hive</groupId>
       <artifactId>hive-service-rpc</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.apache.hive</groupId>
+      <groupId>io.hops.hive</groupId>
       <artifactId>hive-llap-client</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.apache.hive</groupId>
+      <groupId>io.hops.hive</groupId>
       <artifactId>hive-llap-tez</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.apache.hive</groupId>
+      <groupId>io.hops.hive</groupId>
       <artifactId>hive-shims</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.apache.hive</groupId>
+      <groupId>io.hops.hive</groupId>
       <artifactId>hive-storage-api</artifactId>
     </dependency>
     <!-- inter-project -->
@@ -265,7 +265,7 @@
       <artifactId>libfb303</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>io.hops</groupId>
       <artifactId>hadoop-common</artifactId>
       <exclusions>
         <exclusion>
@@ -296,22 +296,22 @@
       <optional>true</optional>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>io.hops</groupId>
       <artifactId>hadoop-archives</artifactId>
       <version>${hadoop.version}</version>
       <optional>true</optional>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>io.hops</groupId>
       <artifactId>hadoop-yarn-registry</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>io.hops</groupId>
       <artifactId>hadoop-mapreduce-client-core</artifactId>
       <optional>true</optional>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>io.hops</groupId>
       <artifactId>hadoop-mapreduce-client-common</artifactId>
       <optional>true</optional>
       <scope>test</scope>
@@ -335,7 +335,7 @@
       </exclusions>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>io.hops</groupId>
       <artifactId>hadoop-hdfs</artifactId>
       <exclusions>
         <exclusion>
@@ -346,12 +346,12 @@
       <optional>true</optional>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>io.hops</groupId>
       <artifactId>hadoop-yarn-api</artifactId>
       <optional>true</optional>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>io.hops</groupId>
       <artifactId>hadoop-yarn-common</artifactId>
       <exclusions>
         <exclusion>
@@ -362,7 +362,7 @@
       <optional>true</optional>
     </dependency>
     <dependency>
-      <groupId>org.apache.hadoop</groupId>
+      <groupId>io.hops</groupId>
       <artifactId>hadoop-yarn-client</artifactId>
       <optional>true</optional>
     </dependency>
@@ -548,27 +548,27 @@
       <artifactId>stax-api</artifactId>
     </dependency>
     <dependency>
-      <groupId>org.apache.hive</groupId>
+      <groupId>io.hops.hive</groupId>
       <artifactId>hive-standalone-metastore-server</artifactId>
       <version>${standalone-metastore.version}</version>
     </dependency>
     <!-- test intra-project -->
     <dependency>
-      <groupId>org.apache.hive</groupId>
+      <groupId>io.hops.hive</groupId>
       <artifactId>hive-common</artifactId>
       <version>${project.version}</version>
       <scope>test</scope>
       <type>test-jar</type>
     </dependency>
     <dependency>
-      <groupId>org.apache.hive</groupId>
+      <groupId>io.hops.hive</groupId>
       <artifactId>hive-standalone-metastore-common</artifactId>
       <version>${standalone-metastore.version}</version>
       <classifier>tests</classifier>
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>org.apache.hive</groupId>
+      <groupId>io.hops.hive</groupId>
       <artifactId>hive-standalone-metastore-server</artifactId>
       <version>${standalone-metastore.version}</version>
       <classifier>tests</classifier>
@@ -1051,17 +1051,17 @@
                 <includes>
                   <!-- order is meant to be the same as the ant build -->
                   <include>org.antlr:antlr-runtime</include>
-                  <include>org.apache.hive:hive-common</include>
-                  <include>org.apache.hive:hive-udf</include>
-                  <include>org.apache.hive:hive-parser</include>
-                  <include>org.apache.hive:hive-exec</include>
-                  <include>org.apache.hive:hive-serde</include>
-                  <include>org.apache.hive:hive-llap-common</include>
-                  <include>org.apache.hive:hive-llap-client</include>
-                  <include>org.apache.hive:hive-metastore</include>
-                  <include>org.apache.hive:hive-standalone-metastore-common</include>
-                  <include>org.apache.hive:hive-standalone-metastore-server</include>
-                  <include>org.apache.hive:hive-service-rpc</include>
+                  <include>io.hops.hive:hive-common</include>
+                  <include>io.hops.hive:hive-udf</include>
+                  <include>io.hops.hive:hive-parser</include>
+                  <include>io.hops.hive:hive-exec</include>
+                  <include>io.hops.hive:hive-serde</include>
+                  <include>io.hops.hive:hive-llap-common</include>
+                  <include>io.hops.hive:hive-llap-client</include>
+                  <include>io.hops.hive:hive-metastore</include>
+                  <include>io.hops.hive:hive-standalone-metastore-common</include>
+                  <include>io.hops.hive:hive-standalone-metastore-server</include>
+                  <include>io.hops.hive:hive-service-rpc</include>
                   <include>com.esotericsoftware.kryo:kryo5</include>
                   <include>org.objenesis:objenesis</include>
                   <include>org.apache.parquet:parquet-hadoop-bundle</include>
@@ -1087,7 +1087,7 @@
                   <include>com.fasterxml.jackson.dataformat:jackson-dataformat-yaml</include>
                   <include>com.google.guava:guava</include>
                   <include>net.sf.opencsv:opencsv</include>
-                  <include>org.apache.hive:hive-storage-api</include>
+                  <include>io.hops.hive:hive-storage-api</include>
                   <include>org.threeten:threeten-extra</include>
                   <include>org.apache.orc:orc-core</include>
                   <include>org.apache.orc:orc-shims</include>

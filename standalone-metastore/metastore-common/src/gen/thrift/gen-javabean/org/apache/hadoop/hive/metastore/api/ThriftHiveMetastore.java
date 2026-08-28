@@ -353,6 +353,8 @@ package org.apache.hadoop.hive.metastore.api;
 
     public java.util.List<java.lang.String> set_ugi(java.lang.String user_name, java.util.List<java.lang.String> group_names) throws MetaException, org.apache.thrift.TException;
 
+    public void set_crypto(java.nio.ByteBuffer key_store, java.lang.String key_store_password, java.nio.ByteBuffer trust_store, java.lang.String trust_store_password, boolean update) throws MetaException, org.apache.thrift.TException;
+
     public java.lang.String get_delegation_token(java.lang.String token_owner, java.lang.String renewer_kerberos_principal_name) throws MetaException, org.apache.thrift.TException;
 
     public long renew_delegation_token(java.lang.String token_str_form) throws MetaException, org.apache.thrift.TException;
@@ -922,6 +924,8 @@ package org.apache.hadoop.hive.metastore.api;
     public void refresh_privileges(HiveObjectRef objToRefresh, java.lang.String authorizer, GrantRevokePrivilegeRequest grantRequest, org.apache.thrift.async.AsyncMethodCallback<GrantRevokePrivilegeResponse> resultHandler) throws org.apache.thrift.TException;
 
     public void set_ugi(java.lang.String user_name, java.util.List<java.lang.String> group_names, org.apache.thrift.async.AsyncMethodCallback<java.util.List<java.lang.String>> resultHandler) throws org.apache.thrift.TException;
+
+    public void set_crypto(java.nio.ByteBuffer key_store, java.lang.String key_store_password, java.nio.ByteBuffer trust_store, java.lang.String trust_store_password, boolean update, org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws org.apache.thrift.TException;
 
     public void get_delegation_token(java.lang.String token_owner, java.lang.String renewer_kerberos_principal_name, org.apache.thrift.async.AsyncMethodCallback<java.lang.String> resultHandler) throws org.apache.thrift.TException;
 
@@ -6207,6 +6211,33 @@ package org.apache.hadoop.hive.metastore.api;
         throw result.o1;
       }
       throw new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.MISSING_RESULT, "set_ugi failed: unknown result");
+    }
+
+    public void set_crypto(java.nio.ByteBuffer key_store, java.lang.String key_store_password, java.nio.ByteBuffer trust_store, java.lang.String trust_store_password, boolean update) throws MetaException, org.apache.thrift.TException
+    {
+      send_set_crypto(key_store, key_store_password, trust_store, trust_store_password, update);
+      recv_set_crypto();
+    }
+
+    public void send_set_crypto(java.nio.ByteBuffer key_store, java.lang.String key_store_password, java.nio.ByteBuffer trust_store, java.lang.String trust_store_password, boolean update) throws org.apache.thrift.TException
+    {
+      set_crypto_args args = new set_crypto_args();
+      args.setKey_store(key_store);
+      args.setKey_store_password(key_store_password);
+      args.setTrust_store(trust_store);
+      args.setTrust_store_password(trust_store_password);
+      args.setUpdate(update);
+      sendBase("set_crypto", args);
+    }
+
+    public void recv_set_crypto() throws MetaException, org.apache.thrift.TException
+    {
+      set_crypto_result result = new set_crypto_result();
+      receiveBase(result, "set_crypto");
+      if (result.o1 != null) {
+        throw result.o1;
+      }
+      return;
     }
 
     public java.lang.String get_delegation_token(java.lang.String token_owner, java.lang.String renewer_kerberos_principal_name) throws MetaException, org.apache.thrift.TException
@@ -15084,6 +15115,51 @@ package org.apache.hadoop.hive.metastore.api;
       }
     }
 
+    public void set_crypto(java.nio.ByteBuffer key_store, java.lang.String key_store_password, java.nio.ByteBuffer trust_store, java.lang.String trust_store_password, boolean update, org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws org.apache.thrift.TException {
+      checkReady();
+      set_crypto_call method_call = new set_crypto_call(key_store, key_store_password, trust_store, trust_store_password, update, resultHandler, this, ___protocolFactory, ___transport);
+      this.___currentMethod = method_call;
+      ___manager.call(method_call);
+    }
+
+    @org.apache.hadoop.classification.InterfaceAudience.Public @org.apache.hadoop.classification.InterfaceStability.Stable public static class set_crypto_call extends org.apache.thrift.async.TAsyncMethodCall<Void> {
+      private java.nio.ByteBuffer key_store;
+      private java.lang.String key_store_password;
+      private java.nio.ByteBuffer trust_store;
+      private java.lang.String trust_store_password;
+      private boolean update;
+      public set_crypto_call(java.nio.ByteBuffer key_store, java.lang.String key_store_password, java.nio.ByteBuffer trust_store, java.lang.String trust_store_password, boolean update, org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler, org.apache.thrift.async.TAsyncClient client, org.apache.thrift.protocol.TProtocolFactory protocolFactory, org.apache.thrift.transport.TNonblockingTransport transport) throws org.apache.thrift.TException {
+        super(client, protocolFactory, transport, resultHandler, false);
+        this.key_store = key_store;
+        this.key_store_password = key_store_password;
+        this.trust_store = trust_store;
+        this.trust_store_password = trust_store_password;
+        this.update = update;
+      }
+
+      public void write_args(org.apache.thrift.protocol.TProtocol prot) throws org.apache.thrift.TException {
+        prot.writeMessageBegin(new org.apache.thrift.protocol.TMessage("set_crypto", org.apache.thrift.protocol.TMessageType.CALL, 0));
+        set_crypto_args args = new set_crypto_args();
+        args.setKey_store(key_store);
+        args.setKey_store_password(key_store_password);
+        args.setTrust_store(trust_store);
+        args.setTrust_store_password(trust_store_password);
+        args.setUpdate(update);
+        args.write(prot);
+        prot.writeMessageEnd();
+      }
+
+      public Void getResult() throws MetaException, org.apache.thrift.TException {
+        if (getState() != org.apache.thrift.async.TAsyncMethodCall.State.RESPONSE_READ) {
+          throw new java.lang.IllegalStateException("Method call not finished!");
+        }
+        org.apache.thrift.transport.TMemoryInputTransport memoryTransport = new org.apache.thrift.transport.TMemoryInputTransport(getFrameBuffer().array());
+        org.apache.thrift.protocol.TProtocol prot = client.getProtocolFactory().getProtocol(memoryTransport);
+        (new Client(prot)).recv_set_crypto();
+        return null;
+      }
+    }
+
     public void get_delegation_token(java.lang.String token_owner, java.lang.String renewer_kerberos_principal_name, org.apache.thrift.async.AsyncMethodCallback<java.lang.String> resultHandler) throws org.apache.thrift.TException {
       checkReady();
       get_delegation_token_call method_call = new get_delegation_token_call(token_owner, renewer_kerberos_principal_name, resultHandler, this, ___protocolFactory, ___transport);
@@ -18929,6 +19005,7 @@ package org.apache.hadoop.hive.metastore.api;
       processMap.put("grant_revoke_privileges", new grant_revoke_privileges());
       processMap.put("refresh_privileges", new refresh_privileges());
       processMap.put("set_ugi", new set_ugi());
+      processMap.put("set_crypto", new set_crypto());
       processMap.put("get_delegation_token", new get_delegation_token());
       processMap.put("renew_delegation_token", new renew_delegation_token());
       processMap.put("cancel_delegation_token", new cancel_delegation_token());
@@ -24374,6 +24451,35 @@ package org.apache.hadoop.hive.metastore.api;
       }
     }
 
+    @org.apache.hadoop.classification.InterfaceAudience.Public @org.apache.hadoop.classification.InterfaceStability.Stable public static class set_crypto<I extends Iface> extends org.apache.thrift.ProcessFunction<I, set_crypto_args> {
+      public set_crypto() {
+        super("set_crypto");
+      }
+
+      public set_crypto_args getEmptyArgsInstance() {
+        return new set_crypto_args();
+      }
+
+      protected boolean isOneway() {
+        return false;
+      }
+
+      @Override
+      protected boolean rethrowUnhandledExceptions() {
+        return false;
+      }
+
+      public set_crypto_result getResult(I iface, set_crypto_args args) throws org.apache.thrift.TException {
+        set_crypto_result result = new set_crypto_result();
+        try {
+          iface.set_crypto(args.key_store, args.key_store_password, args.trust_store, args.trust_store_password, args.update);
+        } catch (MetaException o1) {
+          result.o1 = o1;
+        }
+        return result;
+      }
+    }
+
     @org.apache.hadoop.classification.InterfaceAudience.Public @org.apache.hadoop.classification.InterfaceStability.Stable public static class get_delegation_token<I extends Iface> extends org.apache.thrift.ProcessFunction<I, get_delegation_token_args> {
       public get_delegation_token() {
         super("get_delegation_token");
@@ -27873,6 +27979,7 @@ package org.apache.hadoop.hive.metastore.api;
       processMap.put("grant_revoke_privileges", new grant_revoke_privileges());
       processMap.put("refresh_privileges", new refresh_privileges());
       processMap.put("set_ugi", new set_ugi());
+      processMap.put("set_crypto", new set_crypto());
       processMap.put("get_delegation_token", new get_delegation_token());
       processMap.put("renew_delegation_token", new renew_delegation_token());
       processMap.put("cancel_delegation_token", new cancel_delegation_token());
@@ -39763,6 +39870,70 @@ package org.apache.hadoop.hive.metastore.api;
 
       public void start(I iface, set_ugi_args args, org.apache.thrift.async.AsyncMethodCallback<java.util.List<java.lang.String>> resultHandler) throws org.apache.thrift.TException {
         iface.set_ugi(args.user_name, args.group_names,resultHandler);
+      }
+    }
+
+    @org.apache.hadoop.classification.InterfaceAudience.Public @org.apache.hadoop.classification.InterfaceStability.Stable public static class set_crypto<I extends AsyncIface> extends org.apache.thrift.AsyncProcessFunction<I, set_crypto_args, Void> {
+      public set_crypto() {
+        super("set_crypto");
+      }
+
+      public set_crypto_args getEmptyArgsInstance() {
+        return new set_crypto_args();
+      }
+
+      public org.apache.thrift.async.AsyncMethodCallback<Void> getResultHandler(final org.apache.thrift.server.AbstractNonblockingServer.AsyncFrameBuffer fb, final int seqid) {
+        final org.apache.thrift.AsyncProcessFunction fcall = this;
+        return new org.apache.thrift.async.AsyncMethodCallback<Void>() {
+          public void onComplete(Void o) {
+            set_crypto_result result = new set_crypto_result();
+            try {
+              fcall.sendResponse(fb, result, org.apache.thrift.protocol.TMessageType.REPLY, seqid);
+            } catch (org.apache.thrift.transport.TTransportException e) {
+              _LOGGER.error("TTransportException writing to internal frame buffer", e);
+              fb.close();
+            } catch (java.lang.Exception e) {
+              _LOGGER.error("Exception writing to internal frame buffer", e);
+              onError(e);
+            }
+          }
+          public void onError(java.lang.Exception e) {
+            byte msgType = org.apache.thrift.protocol.TMessageType.REPLY;
+            org.apache.thrift.TSerializable msg;
+            set_crypto_result result = new set_crypto_result();
+            if (e instanceof MetaException) {
+              result.o1 = (MetaException) e;
+              result.setO1IsSet(true);
+              msg = result;
+            } else if (e instanceof org.apache.thrift.transport.TTransportException) {
+              _LOGGER.error("TTransportException inside handler", e);
+              fb.close();
+              return;
+            } else if (e instanceof org.apache.thrift.TApplicationException) {
+              _LOGGER.error("TApplicationException inside handler", e);
+              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = (org.apache.thrift.TApplicationException)e;
+            } else {
+              _LOGGER.error("Exception inside handler", e);
+              msgType = org.apache.thrift.protocol.TMessageType.EXCEPTION;
+              msg = new org.apache.thrift.TApplicationException(org.apache.thrift.TApplicationException.INTERNAL_ERROR, e.getMessage());
+            }
+            try {
+              fcall.sendResponse(fb, msg, msgType, seqid);
+            } catch (java.lang.Exception ex) {
+              _LOGGER.error("Exception writing to internal frame buffer", ex);
+              fb.close();
+            }
+          }
+        };
+      }
+
+      protected boolean isOneway() {
+        return false;
+      }
+
+      public void start(I iface, set_crypto_args args, org.apache.thrift.async.AsyncMethodCallback<Void> resultHandler) throws org.apache.thrift.TException {
+        iface.set_crypto(args.key_store, args.key_store_password, args.trust_store, args.trust_store_password, args.update, resultHandler);
       }
     }
 
@@ -321883,6 +322054,609 @@ package org.apache.hadoop.hive.metastore.api;
           struct.o1.read(iprot);
           struct.setO1IsSet(true);
         }
+      }
+    }
+
+    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
+      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    }
+  }
+
+  @org.apache.hadoop.classification.InterfaceAudience.Public @org.apache.hadoop.classification.InterfaceStability.Stable public static class set_crypto_args implements org.apache.thrift.TBase<set_crypto_args, set_crypto_args._Fields>, java.io.Serializable, Cloneable, Comparable<set_crypto_args>   {
+    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("set_crypto_args");
+
+    private static final org.apache.thrift.protocol.TField KEY_STORE_FIELD_DESC = new org.apache.thrift.protocol.TField("key_store", org.apache.thrift.protocol.TType.STRING, (short)1);
+    private static final org.apache.thrift.protocol.TField KEY_STORE_PASSWORD_FIELD_DESC = new org.apache.thrift.protocol.TField("key_store_password", org.apache.thrift.protocol.TType.STRING, (short)2);
+    private static final org.apache.thrift.protocol.TField TRUST_STORE_FIELD_DESC = new org.apache.thrift.protocol.TField("trust_store", org.apache.thrift.protocol.TType.STRING, (short)3);
+    private static final org.apache.thrift.protocol.TField TRUST_STORE_PASSWORD_FIELD_DESC = new org.apache.thrift.protocol.TField("trust_store_password", org.apache.thrift.protocol.TType.STRING, (short)4);
+    private static final org.apache.thrift.protocol.TField UPDATE_FIELD_DESC = new org.apache.thrift.protocol.TField("update", org.apache.thrift.protocol.TType.BOOL, (short)5);
+
+    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new set_crypto_argsStandardSchemeFactory();
+    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new set_crypto_argsTupleSchemeFactory();
+
+    private @org.apache.thrift.annotation.Nullable java.nio.ByteBuffer key_store; // required
+    private @org.apache.thrift.annotation.Nullable java.lang.String key_store_password; // required
+    private @org.apache.thrift.annotation.Nullable java.nio.ByteBuffer trust_store; // required
+    private @org.apache.thrift.annotation.Nullable java.lang.String trust_store_password; // required
+    private boolean update; // required
+
+    /** The set of fields this struct contains, along with convenience methods for finding and manipulating them. */
+    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+      KEY_STORE((short)1, "key_store"),
+      KEY_STORE_PASSWORD((short)2, "key_store_password"),
+      TRUST_STORE((short)3, "trust_store"),
+      TRUST_STORE_PASSWORD((short)4, "trust_store_password"),
+      UPDATE((short)5, "update");
+
+      private static final java.util.Map<java.lang.String, _Fields> byName = new java.util.HashMap<java.lang.String, _Fields>();
+
+      static {
+        for (_Fields field : java.util.EnumSet.allOf(_Fields.class)) {
+          byName.put(field.getFieldName(), field);
+        }
+      }
+
+      @org.apache.thrift.annotation.Nullable
+      public static _Fields findByThriftId(int fieldId) {
+        switch(fieldId) {
+          case 1: return KEY_STORE;
+          case 2: return KEY_STORE_PASSWORD;
+          case 3: return TRUST_STORE;
+          case 4: return TRUST_STORE_PASSWORD;
+          case 5: return UPDATE;
+          default: return null;
+        }
+      }
+
+      public static _Fields findByThriftIdOrThrow(int fieldId) {
+        _Fields fields = findByThriftId(fieldId);
+        if (fields == null) throw new java.lang.IllegalArgumentException("Field " + fieldId + " doesn't exist!");
+        return fields;
+      }
+
+      @org.apache.thrift.annotation.Nullable
+      public static _Fields findByName(java.lang.String name) { return byName.get(name); }
+
+      private final short _thriftId;
+      private final java.lang.String _fieldName;
+
+      _Fields(short thriftId, java.lang.String fieldName) {
+        _thriftId = thriftId;
+        _fieldName = fieldName;
+      }
+
+      public short getThriftFieldId() { return _thriftId; }
+      public java.lang.String getFieldName() { return _fieldName; }
+    }
+
+    // isset id assignments
+    private static final int __UPDATE_ISSET_ID = 0;
+    private byte __isset_bitfield = 0;
+    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    static {
+      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.KEY_STORE, new org.apache.thrift.meta_data.FieldMetaData("key_store", org.apache.thrift.TFieldRequirementType.DEFAULT,
+          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING, true)));
+      tmpMap.put(_Fields.KEY_STORE_PASSWORD, new org.apache.thrift.meta_data.FieldMetaData("key_store_password", org.apache.thrift.TFieldRequirementType.DEFAULT,
+          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING)));
+      tmpMap.put(_Fields.TRUST_STORE, new org.apache.thrift.meta_data.FieldMetaData("trust_store", org.apache.thrift.TFieldRequirementType.DEFAULT,
+          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING, true)));
+      tmpMap.put(_Fields.TRUST_STORE_PASSWORD, new org.apache.thrift.meta_data.FieldMetaData("trust_store_password", org.apache.thrift.TFieldRequirementType.DEFAULT,
+          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRING)));
+      tmpMap.put(_Fields.UPDATE, new org.apache.thrift.meta_data.FieldMetaData("update", org.apache.thrift.TFieldRequirementType.DEFAULT,
+          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.BOOL)));
+      metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
+      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(set_crypto_args.class, metaDataMap);
+    }
+
+    public set_crypto_args() {}
+
+    public set_crypto_args(java.nio.ByteBuffer key_store, java.lang.String key_store_password, java.nio.ByteBuffer trust_store, java.lang.String trust_store_password, boolean update) {
+      this();
+      this.key_store = org.apache.thrift.TBaseHelper.copyBinary(key_store);
+      this.key_store_password = key_store_password;
+      this.trust_store = org.apache.thrift.TBaseHelper.copyBinary(trust_store);
+      this.trust_store_password = trust_store_password;
+      this.update = update;
+      setUpdateIsSet(true);
+    }
+
+    public set_crypto_args(set_crypto_args other) {
+      __isset_bitfield = other.__isset_bitfield;
+      if (other.isSetKey_store()) this.key_store = org.apache.thrift.TBaseHelper.copyBinary(other.key_store);
+      if (other.isSetKey_store_password()) this.key_store_password = other.key_store_password;
+      if (other.isSetTrust_store()) this.trust_store = org.apache.thrift.TBaseHelper.copyBinary(other.trust_store);
+      if (other.isSetTrust_store_password()) this.trust_store_password = other.trust_store_password;
+      this.update = other.update;
+    }
+
+    public set_crypto_args deepCopy() { return new set_crypto_args(this); }
+
+    @Override
+    public void clear() {
+      this.key_store = null;
+      this.key_store_password = null;
+      this.trust_store = null;
+      this.trust_store_password = null;
+      setUpdateIsSet(false);
+      this.update = false;
+    }
+
+    public byte[] getKey_store() {
+      setKey_store(org.apache.thrift.TBaseHelper.rightSize(key_store));
+      return key_store == null ? null : key_store.array();
+    }
+    public java.nio.ByteBuffer bufferForKey_store() { return org.apache.thrift.TBaseHelper.copyBinary(key_store); }
+    public void setKey_store(byte[] key_store) { this.key_store = key_store == null ? (java.nio.ByteBuffer)null : java.nio.ByteBuffer.wrap(java.util.Arrays.copyOf(key_store, key_store.length)); }
+    public void setKey_store(java.nio.ByteBuffer key_store) { this.key_store = org.apache.thrift.TBaseHelper.copyBinary(key_store); }
+    public void unsetKey_store() { this.key_store = null; }
+    public boolean isSetKey_store() { return this.key_store != null; }
+    public void setKey_storeIsSet(boolean value) { if (!value) this.key_store = null; }
+
+    @org.apache.thrift.annotation.Nullable
+    public java.lang.String getKey_store_password() { return this.key_store_password; }
+    public void setKey_store_password(@org.apache.thrift.annotation.Nullable java.lang.String key_store_password) { this.key_store_password = key_store_password; }
+    public void unsetKey_store_password() { this.key_store_password = null; }
+    public boolean isSetKey_store_password() { return this.key_store_password != null; }
+    public void setKey_store_passwordIsSet(boolean value) { if (!value) this.key_store_password = null; }
+
+    public byte[] getTrust_store() {
+      setTrust_store(org.apache.thrift.TBaseHelper.rightSize(trust_store));
+      return trust_store == null ? null : trust_store.array();
+    }
+    public java.nio.ByteBuffer bufferForTrust_store() { return org.apache.thrift.TBaseHelper.copyBinary(trust_store); }
+    public void setTrust_store(byte[] trust_store) { this.trust_store = trust_store == null ? (java.nio.ByteBuffer)null : java.nio.ByteBuffer.wrap(java.util.Arrays.copyOf(trust_store, trust_store.length)); }
+    public void setTrust_store(java.nio.ByteBuffer trust_store) { this.trust_store = org.apache.thrift.TBaseHelper.copyBinary(trust_store); }
+    public void unsetTrust_store() { this.trust_store = null; }
+    public boolean isSetTrust_store() { return this.trust_store != null; }
+    public void setTrust_storeIsSet(boolean value) { if (!value) this.trust_store = null; }
+
+    @org.apache.thrift.annotation.Nullable
+    public java.lang.String getTrust_store_password() { return this.trust_store_password; }
+    public void setTrust_store_password(@org.apache.thrift.annotation.Nullable java.lang.String trust_store_password) { this.trust_store_password = trust_store_password; }
+    public void unsetTrust_store_password() { this.trust_store_password = null; }
+    public boolean isSetTrust_store_password() { return this.trust_store_password != null; }
+    public void setTrust_store_passwordIsSet(boolean value) { if (!value) this.trust_store_password = null; }
+
+    public boolean isUpdate() { return this.update; }
+    public void setUpdate(boolean update) { this.update = update; setUpdateIsSet(true); }
+    public void unsetUpdate() { __isset_bitfield = org.apache.thrift.EncodingUtils.clearBit(__isset_bitfield, __UPDATE_ISSET_ID); }
+    public boolean isSetUpdate() { return org.apache.thrift.EncodingUtils.testBit(__isset_bitfield, __UPDATE_ISSET_ID); }
+    public void setUpdateIsSet(boolean value) { __isset_bitfield = org.apache.thrift.EncodingUtils.setBit(__isset_bitfield, __UPDATE_ISSET_ID, value); }
+
+    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+      switch (field) {
+      case KEY_STORE:
+        if (value == null) unsetKey_store(); else setKey_store((java.nio.ByteBuffer)value);
+        break;
+      case KEY_STORE_PASSWORD:
+        if (value == null) unsetKey_store_password(); else setKey_store_password((java.lang.String)value);
+        break;
+      case TRUST_STORE:
+        if (value == null) unsetTrust_store(); else setTrust_store((java.nio.ByteBuffer)value);
+        break;
+      case TRUST_STORE_PASSWORD:
+        if (value == null) unsetTrust_store_password(); else setTrust_store_password((java.lang.String)value);
+        break;
+      case UPDATE:
+        if (value == null) unsetUpdate(); else setUpdate((java.lang.Boolean)value);
+        break;
+      }
+    }
+
+    @org.apache.thrift.annotation.Nullable
+    public java.lang.Object getFieldValue(_Fields field) {
+      switch (field) {
+      case KEY_STORE: return bufferForKey_store();
+      case KEY_STORE_PASSWORD: return getKey_store_password();
+      case TRUST_STORE: return bufferForTrust_store();
+      case TRUST_STORE_PASSWORD: return getTrust_store_password();
+      case UPDATE: return isUpdate();
+      }
+      throw new java.lang.IllegalStateException();
+    }
+
+    public boolean isSet(_Fields field) {
+      if (field == null) throw new java.lang.IllegalArgumentException();
+      switch (field) {
+      case KEY_STORE: return isSetKey_store();
+      case KEY_STORE_PASSWORD: return isSetKey_store_password();
+      case TRUST_STORE: return isSetTrust_store();
+      case TRUST_STORE_PASSWORD: return isSetTrust_store_password();
+      case UPDATE: return isSetUpdate();
+      }
+      throw new java.lang.IllegalStateException();
+    }
+
+    @Override
+    public boolean equals(java.lang.Object that) {
+      if (that instanceof set_crypto_args) return this.equals((set_crypto_args)that);
+      return false;
+    }
+
+    public boolean equals(set_crypto_args that) {
+      if (that == null) return false;
+      if (this == that) return true;
+      boolean this_present_key_store = true && this.isSetKey_store();
+      boolean that_present_key_store = true && that.isSetKey_store();
+      if (this_present_key_store || that_present_key_store) {
+        if (!(this_present_key_store && that_present_key_store)) return false;
+        if (!this.key_store.equals(that.key_store)) return false;
+      }
+      boolean this_present_key_store_password = true && this.isSetKey_store_password();
+      boolean that_present_key_store_password = true && that.isSetKey_store_password();
+      if (this_present_key_store_password || that_present_key_store_password) {
+        if (!(this_present_key_store_password && that_present_key_store_password)) return false;
+        if (!this.key_store_password.equals(that.key_store_password)) return false;
+      }
+      boolean this_present_trust_store = true && this.isSetTrust_store();
+      boolean that_present_trust_store = true && that.isSetTrust_store();
+      if (this_present_trust_store || that_present_trust_store) {
+        if (!(this_present_trust_store && that_present_trust_store)) return false;
+        if (!this.trust_store.equals(that.trust_store)) return false;
+      }
+      boolean this_present_trust_store_password = true && this.isSetTrust_store_password();
+      boolean that_present_trust_store_password = true && that.isSetTrust_store_password();
+      if (this_present_trust_store_password || that_present_trust_store_password) {
+        if (!(this_present_trust_store_password && that_present_trust_store_password)) return false;
+        if (!this.trust_store_password.equals(that.trust_store_password)) return false;
+      }
+      boolean this_present_update = true;
+      boolean that_present_update = true;
+      if (this_present_update || that_present_update) {
+        if (!(this_present_update && that_present_update)) return false;
+        if (this.update != that.update) return false;
+      }
+      return true;
+    }
+
+    @Override
+    public int hashCode() {
+      int hashCode = 1;
+      hashCode = hashCode * 8191 + ((isSetKey_store()) ? 131071 : 524287);
+      if (isSetKey_store()) hashCode = hashCode * 8191 + key_store.hashCode();
+      hashCode = hashCode * 8191 + ((isSetKey_store_password()) ? 131071 : 524287);
+      if (isSetKey_store_password()) hashCode = hashCode * 8191 + key_store_password.hashCode();
+      hashCode = hashCode * 8191 + ((isSetTrust_store()) ? 131071 : 524287);
+      if (isSetTrust_store()) hashCode = hashCode * 8191 + trust_store.hashCode();
+      hashCode = hashCode * 8191 + ((isSetTrust_store_password()) ? 131071 : 524287);
+      if (isSetTrust_store_password()) hashCode = hashCode * 8191 + trust_store_password.hashCode();
+      hashCode = hashCode * 8191 + ((isSetUpdate()) ? 131071 : 524287);
+      if (isSetUpdate()) hashCode = hashCode * 8191 + (update ? 131071 : 524287);
+      return hashCode;
+    }
+
+    @Override
+    public int compareTo(set_crypto_args other) {
+      if (!getClass().equals(other.getClass())) return getClass().getName().compareTo(other.getClass().getName());
+      int lastComparison = 0;
+      lastComparison = java.lang.Boolean.compare(isSetKey_store(), other.isSetKey_store());
+      if (lastComparison != 0) return lastComparison;
+      if (isSetKey_store()) { lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.key_store, other.key_store); if (lastComparison != 0) return lastComparison; }
+      lastComparison = java.lang.Boolean.compare(isSetKey_store_password(), other.isSetKey_store_password());
+      if (lastComparison != 0) return lastComparison;
+      if (isSetKey_store_password()) { lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.key_store_password, other.key_store_password); if (lastComparison != 0) return lastComparison; }
+      lastComparison = java.lang.Boolean.compare(isSetTrust_store(), other.isSetTrust_store());
+      if (lastComparison != 0) return lastComparison;
+      if (isSetTrust_store()) { lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.trust_store, other.trust_store); if (lastComparison != 0) return lastComparison; }
+      lastComparison = java.lang.Boolean.compare(isSetTrust_store_password(), other.isSetTrust_store_password());
+      if (lastComparison != 0) return lastComparison;
+      if (isSetTrust_store_password()) { lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.trust_store_password, other.trust_store_password); if (lastComparison != 0) return lastComparison; }
+      lastComparison = java.lang.Boolean.compare(isSetUpdate(), other.isSetUpdate());
+      if (lastComparison != 0) return lastComparison;
+      if (isSetUpdate()) { lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.update, other.update); if (lastComparison != 0) return lastComparison; }
+      return 0;
+    }
+
+    @org.apache.thrift.annotation.Nullable
+    public _Fields fieldForId(int fieldId) { return _Fields.findByThriftId(fieldId); }
+
+    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException { scheme(iprot).read(iprot, this); }
+    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException { scheme(oprot).write(oprot, this); }
+
+    @Override
+    public java.lang.String toString() {
+      java.lang.StringBuilder sb = new java.lang.StringBuilder("set_crypto_args(");
+      boolean first = true;
+      sb.append("key_store:"); if (this.key_store == null) sb.append("null"); else org.apache.thrift.TBaseHelper.toString(this.key_store, sb); first = false;
+      if (!first) sb.append(", "); sb.append("key_store_password:"); if (this.key_store_password == null) sb.append("null"); else sb.append(this.key_store_password); first = false;
+      if (!first) sb.append(", "); sb.append("trust_store:"); if (this.trust_store == null) sb.append("null"); else org.apache.thrift.TBaseHelper.toString(this.trust_store, sb); first = false;
+      if (!first) sb.append(", "); sb.append("trust_store_password:"); if (this.trust_store_password == null) sb.append("null"); else sb.append(this.trust_store_password); first = false;
+      if (!first) sb.append(", "); sb.append("update:"); sb.append(this.update); first = false;
+      sb.append(")");
+      return sb.toString();
+    }
+
+    public void validate() throws org.apache.thrift.TException {}
+
+    private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
+      try { write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out))); } catch (org.apache.thrift.TException te) { throw new java.io.IOException(te); }
+    }
+    private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, java.lang.ClassNotFoundException {
+      try { __isset_bitfield = 0; read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in))); } catch (org.apache.thrift.TException te) { throw new java.io.IOException(te); }
+    }
+
+    private static class set_crypto_argsStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+      public set_crypto_argsStandardScheme getScheme() { return new set_crypto_argsStandardScheme(); }
+    }
+
+    private static class set_crypto_argsStandardScheme extends org.apache.thrift.scheme.StandardScheme<set_crypto_args> {
+      public void read(org.apache.thrift.protocol.TProtocol iprot, set_crypto_args struct) throws org.apache.thrift.TException {
+        org.apache.thrift.protocol.TField schemeField;
+        iprot.readStructBegin();
+        while (true) {
+          schemeField = iprot.readFieldBegin();
+          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) break;
+          switch (schemeField.id) {
+            case 1:
+              if (schemeField.type == org.apache.thrift.protocol.TType.STRING) { struct.key_store = iprot.readBinary(); struct.setKey_storeIsSet(true); }
+              else org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              break;
+            case 2:
+              if (schemeField.type == org.apache.thrift.protocol.TType.STRING) { struct.key_store_password = iprot.readString(); struct.setKey_store_passwordIsSet(true); }
+              else org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              break;
+            case 3:
+              if (schemeField.type == org.apache.thrift.protocol.TType.STRING) { struct.trust_store = iprot.readBinary(); struct.setTrust_storeIsSet(true); }
+              else org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              break;
+            case 4:
+              if (schemeField.type == org.apache.thrift.protocol.TType.STRING) { struct.trust_store_password = iprot.readString(); struct.setTrust_store_passwordIsSet(true); }
+              else org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              break;
+            case 5:
+              if (schemeField.type == org.apache.thrift.protocol.TType.BOOL) { struct.update = iprot.readBool(); struct.setUpdateIsSet(true); }
+              else org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              break;
+            default:
+              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+          }
+          iprot.readFieldEnd();
+        }
+        iprot.readStructEnd();
+        struct.validate();
+      }
+
+      public void write(org.apache.thrift.protocol.TProtocol oprot, set_crypto_args struct) throws org.apache.thrift.TException {
+        struct.validate();
+        oprot.writeStructBegin(STRUCT_DESC);
+        if (struct.key_store != null) { oprot.writeFieldBegin(KEY_STORE_FIELD_DESC); oprot.writeBinary(struct.key_store); oprot.writeFieldEnd(); }
+        if (struct.key_store_password != null) { oprot.writeFieldBegin(KEY_STORE_PASSWORD_FIELD_DESC); oprot.writeString(struct.key_store_password); oprot.writeFieldEnd(); }
+        if (struct.trust_store != null) { oprot.writeFieldBegin(TRUST_STORE_FIELD_DESC); oprot.writeBinary(struct.trust_store); oprot.writeFieldEnd(); }
+        if (struct.trust_store_password != null) { oprot.writeFieldBegin(TRUST_STORE_PASSWORD_FIELD_DESC); oprot.writeString(struct.trust_store_password); oprot.writeFieldEnd(); }
+        oprot.writeFieldBegin(UPDATE_FIELD_DESC); oprot.writeBool(struct.update); oprot.writeFieldEnd();
+        oprot.writeFieldStop();
+        oprot.writeStructEnd();
+      }
+    }
+
+    private static class set_crypto_argsTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+      public set_crypto_argsTupleScheme getScheme() { return new set_crypto_argsTupleScheme(); }
+    }
+
+    private static class set_crypto_argsTupleScheme extends org.apache.thrift.scheme.TupleScheme<set_crypto_args> {
+      @Override
+      public void write(org.apache.thrift.protocol.TProtocol prot, set_crypto_args struct) throws org.apache.thrift.TException {
+        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+        java.util.BitSet optionals = new java.util.BitSet();
+        if (struct.isSetKey_store()) optionals.set(0);
+        if (struct.isSetKey_store_password()) optionals.set(1);
+        if (struct.isSetTrust_store()) optionals.set(2);
+        if (struct.isSetTrust_store_password()) optionals.set(3);
+        if (struct.isSetUpdate()) optionals.set(4);
+        oprot.writeBitSet(optionals, 5);
+        if (struct.isSetKey_store()) oprot.writeBinary(struct.key_store);
+        if (struct.isSetKey_store_password()) oprot.writeString(struct.key_store_password);
+        if (struct.isSetTrust_store()) oprot.writeBinary(struct.trust_store);
+        if (struct.isSetTrust_store_password()) oprot.writeString(struct.trust_store_password);
+        if (struct.isSetUpdate()) oprot.writeBool(struct.update);
+      }
+
+      @Override
+      public void read(org.apache.thrift.protocol.TProtocol prot, set_crypto_args struct) throws org.apache.thrift.TException {
+        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+        java.util.BitSet incoming = iprot.readBitSet(5);
+        if (incoming.get(0)) { struct.key_store = iprot.readBinary(); struct.setKey_storeIsSet(true); }
+        if (incoming.get(1)) { struct.key_store_password = iprot.readString(); struct.setKey_store_passwordIsSet(true); }
+        if (incoming.get(2)) { struct.trust_store = iprot.readBinary(); struct.setTrust_storeIsSet(true); }
+        if (incoming.get(3)) { struct.trust_store_password = iprot.readString(); struct.setTrust_store_passwordIsSet(true); }
+        if (incoming.get(4)) { struct.update = iprot.readBool(); struct.setUpdateIsSet(true); }
+      }
+    }
+
+    private static <S extends org.apache.thrift.scheme.IScheme> S scheme(org.apache.thrift.protocol.TProtocol proto) {
+      return (org.apache.thrift.scheme.StandardScheme.class.equals(proto.getScheme()) ? STANDARD_SCHEME_FACTORY : TUPLE_SCHEME_FACTORY).getScheme();
+    }
+  }
+
+  @org.apache.hadoop.classification.InterfaceAudience.Public @org.apache.hadoop.classification.InterfaceStability.Stable public static class set_crypto_result implements org.apache.thrift.TBase<set_crypto_result, set_crypto_result._Fields>, java.io.Serializable, Cloneable, Comparable<set_crypto_result>   {
+    private static final org.apache.thrift.protocol.TStruct STRUCT_DESC = new org.apache.thrift.protocol.TStruct("set_crypto_result");
+
+    private static final org.apache.thrift.protocol.TField O1_FIELD_DESC = new org.apache.thrift.protocol.TField("o1", org.apache.thrift.protocol.TType.STRUCT, (short)1);
+
+    private static final org.apache.thrift.scheme.SchemeFactory STANDARD_SCHEME_FACTORY = new set_crypto_resultStandardSchemeFactory();
+    private static final org.apache.thrift.scheme.SchemeFactory TUPLE_SCHEME_FACTORY = new set_crypto_resultTupleSchemeFactory();
+
+    private @org.apache.thrift.annotation.Nullable MetaException o1; // required
+
+    public enum _Fields implements org.apache.thrift.TFieldIdEnum {
+      O1((short)1, "o1");
+
+      private static final java.util.Map<java.lang.String, _Fields> byName = new java.util.HashMap<java.lang.String, _Fields>();
+      static { for (_Fields field : java.util.EnumSet.allOf(_Fields.class)) { byName.put(field.getFieldName(), field); } }
+
+      @org.apache.thrift.annotation.Nullable
+      public static _Fields findByThriftId(int fieldId) {
+        switch(fieldId) { case 1: return O1; default: return null; }
+      }
+      public static _Fields findByThriftIdOrThrow(int fieldId) {
+        _Fields fields = findByThriftId(fieldId);
+        if (fields == null) throw new java.lang.IllegalArgumentException("Field " + fieldId + " doesn't exist!");
+        return fields;
+      }
+      @org.apache.thrift.annotation.Nullable
+      public static _Fields findByName(java.lang.String name) { return byName.get(name); }
+
+      private final short _thriftId;
+      private final java.lang.String _fieldName;
+      _Fields(short thriftId, java.lang.String fieldName) { _thriftId = thriftId; _fieldName = fieldName; }
+      public short getThriftFieldId() { return _thriftId; }
+      public java.lang.String getFieldName() { return _fieldName; }
+    }
+
+    public static final java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> metaDataMap;
+    static {
+      java.util.Map<_Fields, org.apache.thrift.meta_data.FieldMetaData> tmpMap = new java.util.EnumMap<_Fields, org.apache.thrift.meta_data.FieldMetaData>(_Fields.class);
+      tmpMap.put(_Fields.O1, new org.apache.thrift.meta_data.FieldMetaData("o1", org.apache.thrift.TFieldRequirementType.DEFAULT,
+          new org.apache.thrift.meta_data.FieldValueMetaData(org.apache.thrift.protocol.TType.STRUCT)));
+      metaDataMap = java.util.Collections.unmodifiableMap(tmpMap);
+      org.apache.thrift.meta_data.FieldMetaData.addStructMetaDataMap(set_crypto_result.class, metaDataMap);
+    }
+
+    public set_crypto_result() {}
+    public set_crypto_result(set_crypto_result other) { if (other.isSetO1()) { this.o1 = new MetaException(other.o1); } }
+    public set_crypto_result deepCopy() { return new set_crypto_result(this); }
+
+    @Override
+    public void clear() { this.o1 = null; }
+
+    @org.apache.thrift.annotation.Nullable
+    public MetaException getO1() { return this.o1; }
+    public void setO1(@org.apache.thrift.annotation.Nullable MetaException o1) { this.o1 = o1; }
+    public void unsetO1() { this.o1 = null; }
+    public boolean isSetO1() { return this.o1 != null; }
+    public void setO1IsSet(boolean value) { if (!value) this.o1 = null; }
+
+    public void setFieldValue(_Fields field, @org.apache.thrift.annotation.Nullable java.lang.Object value) {
+      switch (field) {
+      case O1: if (value == null) unsetO1(); else setO1((MetaException)value); break;
+      }
+    }
+
+    @org.apache.thrift.annotation.Nullable
+    public java.lang.Object getFieldValue(_Fields field) {
+      switch (field) { case O1: return getO1(); }
+      throw new java.lang.IllegalStateException();
+    }
+
+    public boolean isSet(_Fields field) {
+      if (field == null) throw new java.lang.IllegalArgumentException();
+      switch (field) { case O1: return isSetO1(); }
+      throw new java.lang.IllegalStateException();
+    }
+
+    @Override
+    public boolean equals(java.lang.Object that) {
+      if (that instanceof set_crypto_result) return this.equals((set_crypto_result)that);
+      return false;
+    }
+    public boolean equals(set_crypto_result that) {
+      if (that == null) return false;
+      if (this == that) return true;
+      boolean this_present_o1 = true && this.isSetO1();
+      boolean that_present_o1 = true && that.isSetO1();
+      if (this_present_o1 || that_present_o1) {
+        if (!(this_present_o1 && that_present_o1)) return false;
+        if (!this.o1.equals(that.o1)) return false;
+      }
+      return true;
+    }
+
+    @Override
+    public int hashCode() {
+      int hashCode = 1;
+      hashCode = hashCode * 8191 + ((isSetO1()) ? 131071 : 524287);
+      if (isSetO1()) hashCode = hashCode * 8191 + o1.hashCode();
+      return hashCode;
+    }
+
+    @Override
+    public int compareTo(set_crypto_result other) {
+      if (!getClass().equals(other.getClass())) return getClass().getName().compareTo(other.getClass().getName());
+      int lastComparison = 0;
+      lastComparison = java.lang.Boolean.compare(isSetO1(), other.isSetO1());
+      if (lastComparison != 0) return lastComparison;
+      if (isSetO1()) { lastComparison = org.apache.thrift.TBaseHelper.compareTo(this.o1, other.o1); if (lastComparison != 0) return lastComparison; }
+      return 0;
+    }
+
+    @org.apache.thrift.annotation.Nullable
+    public _Fields fieldForId(int fieldId) { return _Fields.findByThriftId(fieldId); }
+
+    public void read(org.apache.thrift.protocol.TProtocol iprot) throws org.apache.thrift.TException { scheme(iprot).read(iprot, this); }
+    public void write(org.apache.thrift.protocol.TProtocol oprot) throws org.apache.thrift.TException { scheme(oprot).write(oprot, this); }
+
+    @Override
+    public java.lang.String toString() {
+      java.lang.StringBuilder sb = new java.lang.StringBuilder("set_crypto_result(");
+      boolean first = true;
+      sb.append("o1:"); if (this.o1 == null) sb.append("null"); else sb.append(this.o1); first = false;
+      sb.append(")");
+      return sb.toString();
+    }
+
+    public void validate() throws org.apache.thrift.TException {}
+
+    private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
+      try { write(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(out))); } catch (org.apache.thrift.TException te) { throw new java.io.IOException(te); }
+    }
+    private void readObject(java.io.ObjectInputStream in) throws java.io.IOException, java.lang.ClassNotFoundException {
+      try { read(new org.apache.thrift.protocol.TCompactProtocol(new org.apache.thrift.transport.TIOStreamTransport(in))); } catch (org.apache.thrift.TException te) { throw new java.io.IOException(te); }
+    }
+
+    private static class set_crypto_resultStandardSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+      public set_crypto_resultStandardScheme getScheme() { return new set_crypto_resultStandardScheme(); }
+    }
+
+    private static class set_crypto_resultStandardScheme extends org.apache.thrift.scheme.StandardScheme<set_crypto_result> {
+      public void read(org.apache.thrift.protocol.TProtocol iprot, set_crypto_result struct) throws org.apache.thrift.TException {
+        org.apache.thrift.protocol.TField schemeField;
+        iprot.readStructBegin();
+        while (true) {
+          schemeField = iprot.readFieldBegin();
+          if (schemeField.type == org.apache.thrift.protocol.TType.STOP) break;
+          switch (schemeField.id) {
+            case 1:
+              if (schemeField.type == org.apache.thrift.protocol.TType.STRUCT) { struct.o1 = new MetaException(); struct.o1.read(iprot); struct.setO1IsSet(true); }
+              else org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+              break;
+            default:
+              org.apache.thrift.protocol.TProtocolUtil.skip(iprot, schemeField.type);
+          }
+          iprot.readFieldEnd();
+        }
+        iprot.readStructEnd();
+        struct.validate();
+      }
+
+      public void write(org.apache.thrift.protocol.TProtocol oprot, set_crypto_result struct) throws org.apache.thrift.TException {
+        struct.validate();
+        oprot.writeStructBegin(STRUCT_DESC);
+        if (struct.o1 != null) { oprot.writeFieldBegin(O1_FIELD_DESC); struct.o1.write(oprot); oprot.writeFieldEnd(); }
+        oprot.writeFieldStop();
+        oprot.writeStructEnd();
+      }
+    }
+
+    private static class set_crypto_resultTupleSchemeFactory implements org.apache.thrift.scheme.SchemeFactory {
+      public set_crypto_resultTupleScheme getScheme() { return new set_crypto_resultTupleScheme(); }
+    }
+
+    private static class set_crypto_resultTupleScheme extends org.apache.thrift.scheme.TupleScheme<set_crypto_result> {
+      @Override
+      public void write(org.apache.thrift.protocol.TProtocol prot, set_crypto_result struct) throws org.apache.thrift.TException {
+        org.apache.thrift.protocol.TTupleProtocol oprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+        java.util.BitSet optionals = new java.util.BitSet();
+        if (struct.isSetO1()) optionals.set(0);
+        oprot.writeBitSet(optionals, 1);
+        if (struct.isSetO1()) struct.o1.write(oprot);
+      }
+
+      @Override
+      public void read(org.apache.thrift.protocol.TProtocol prot, set_crypto_result struct) throws org.apache.thrift.TException {
+        org.apache.thrift.protocol.TTupleProtocol iprot = (org.apache.thrift.protocol.TTupleProtocol) prot;
+        java.util.BitSet incoming = iprot.readBitSet(1);
+        if (incoming.get(0)) { struct.o1 = new MetaException(); struct.o1.read(iprot); struct.setO1IsSet(true); }
       }
     }
 

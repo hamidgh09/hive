@@ -65,7 +65,7 @@ public class LlapTokenClient {
   private LlapServiceInstance clientInstance;
   private Token<LlapTokenIdentifier> currentToken;
 
-  public LlapTokenClient(Configuration conf) {
+  public LlapTokenClient(Configuration conf) throws IOException {
     this.conf = conf;
     registry = new LlapRegistryService(false);
     registry.init(conf);
@@ -180,7 +180,7 @@ public class LlapTokenClient {
     return LlapUtil.loginWithKerberos(llapPrincipal, llapKeytab);
   }
 
-  private ByteString getTokenWithUgi(final String appId, UserGroupInformation ugi) throws ServiceException {
+  private ByteString getTokenWithUgi(final String appId, UserGroupInformation ugi) throws ServiceException, java.io.IOException {
     if (client == null) {
       client = new LlapManagementProtocolClientImpl(conf, clientInstance.getHost(), clientInstance.getManagementPort(),
           retryPolicy, socketFactory);

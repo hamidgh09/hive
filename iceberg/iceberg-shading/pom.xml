@@ -12,7 +12,7 @@
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
-    <groupId>org.apache.hive</groupId>
+    <groupId>io.hops.hive</groupId>
     <artifactId>hive-iceberg</artifactId>
     <version>4.1.0</version>
     <relativePath>../pom.xml</relativePath>
@@ -35,7 +35,7 @@
   </properties>
   <dependencies>
     <dependency>
-      <groupId>org.apache.hive</groupId>
+      <groupId>io.hops.hive</groupId>
       <artifactId>patched-iceberg-core</artifactId>
       <optional>true</optional>
     </dependency>
@@ -108,8 +108,8 @@
                       <include>com.google*:*</include>
                       <include>com.fasterxml*:*</include>
                       <include>com.github.ben-manes*:*</include>
-                      <include>org.apache.hive:patched-iceberg-api</include>
-                      <include>org.apache.hive:patched-iceberg-core</include>
+                      <include>io.hops.hive:patched-iceberg-api</include>
+                      <include>io.hops.hive:patched-iceberg-core</include>
                     </includes>
                     <excludes>
                       <exclude>org.apache.iceberg:iceberg-api</exclude>

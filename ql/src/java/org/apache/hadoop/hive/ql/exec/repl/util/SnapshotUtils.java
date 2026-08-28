@@ -22,7 +22,6 @@ import org.apache.hadoop.fs.Options;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
 import org.apache.hadoop.hdfs.protocol.HdfsConstants;
-import org.apache.hadoop.hdfs.protocol.SnapshotException;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.ql.exec.util.Retryable;
 import org.apache.hadoop.hive.ql.parse.EximUtil;
@@ -81,7 +80,7 @@ public class SnapshotUtils {
       String snapshotName, HiveConf conf) throws IOException {
     AtomicBoolean isSnapAvlb = new AtomicBoolean(false);
     Retryable retryable = Retryable.builder().withHiveConf(conf).withRetryOnException(IOException.class)
-        .withFailOnException(SnapshotException.class).build();
+        .withFailOnException(IOException.class).build();
     try {
       retryable.executeCallable(() -> {
         isSnapAvlb
@@ -90,7 +89,7 @@ public class SnapshotUtils {
         return null;
       });
     } catch (Exception e) {
-      throw new SnapshotException("Failed to check if snapshot is available on " + path, e);
+      throw new IOException("Failed to check if snapshot is available on " + path, e);
     }
     return isSnapAvlb.get();
   }
@@ -107,10 +106,10 @@ public class SnapshotUtils {
     try {
       dfs.deleteSnapshot(snapshotPath, snapshotName);
       return true;
-    } catch (SnapshotException e) {
-      LOG.debug("Couldn't delete the snapshot {} under path {}", snapshotName, snapshotPath, e);
     } catch (FileNotFoundException fnf) {
       LOG.warn("Couldn't delete the snapshot {} under path {}", snapshotName, snapshotPath, fnf);
+    } catch (IOException e) {
+      LOG.debug("Couldn't delete the snapshot {} under path {}", snapshotName, snapshotPath, e);
     }
     return false;
   }
@@ -126,7 +125,7 @@ public class SnapshotUtils {
   public static boolean deleteSnapshotIfExists(DistributedFileSystem fs, Path snapshotPath, String snapshotName,
       HiveConf conf) throws IOException {
     Retryable retryable = Retryable.builder().withHiveConf(conf).withRetryOnException(IOException.class)
-        .withFailOnException(SnapshotException.class).build();
+        .withFailOnException(IOException.class).build();
     try {
       retryable.executeCallable(() -> {
         try {
@@ -137,7 +136,7 @@ public class SnapshotUtils {
           // Ignore FileNotFoundException, Our intention is to make sure the snapshot doesn't exist and the FNF means
           // it already doesn't exist.
           LOG.warn("Couldn't create the snapshot {} under path {}. It doesn't exist", snapshotName, snapshotPath, e);
-        } catch (SnapshotException e) {
+        } catch (IOException e) {
           if (e.getMessage().contains("the snapshot does not exist") || e.getMessage()
               .contains("Directory is not a snapshottable directory")) {
             return true;
@@ -146,7 +145,7 @@ public class SnapshotUtils {
         return null;
       });
     } catch (Exception e) {
-      throw new SnapshotException(
+      throw new IOException(
           "Unable to delete snapshot for path: " + snapshotPath + " snapshot name: " + snapshotName, e);
     }
     return true;
@@ -161,7 +160,7 @@ public class SnapshotUtils {
     try {
       // Check if the directory is snapshottable.
       if (dfs.getFileStatus(snapshotPath).isSnapshotEnabled()) {
-        dfs.disallowSnapshot(snapshotPath);
+        LOG.warn("disallowSnapshot not supported in HopsFS for path {}", snapshotPath);
       }
     } catch (Exception e) {
       LOG.warn("Could not disallow snapshot for path {}", snapshotPath, e);
@@ -177,12 +176,12 @@ public class SnapshotUtils {
   public static void allowSnapshot(DistributedFileSystem dfs, Path snapshotPath, HiveConf conf) throws IOException {
     // Check if the directory is already snapshottable.
     Retryable retryable = Retryable.builder().withHiveConf(conf).withRetryOnException(IOException.class)
-        .withFailOnException(SnapshotException.class).build();
+        .withFailOnException(IOException.class).build();
     try {
       retryable.executeCallable(() -> {
         try {
           if (!dfs.getFileStatus(snapshotPath).isSnapshotEnabled()) {
-            dfs.allowSnapshot(snapshotPath);
+            LOG.warn("allowSnapshot not supported in HopsFS for path {}", snapshotPath);
           }
         } catch (FileNotFoundException fnf) {
           // Source got deleted, we can ignore.
@@ -191,7 +190,7 @@ public class SnapshotUtils {
         return null;
       });
     } catch (Exception e) {
-      throw new SnapshotException("Failed to AllowSnapshot on " + snapshotPath, e);
+      throw new IOException("Failed to AllowSnapshot on " + snapshotPath, e);
     }
   }
 
@@ -214,7 +213,7 @@ public class SnapshotUtils {
   public static void createSnapshot(FileSystem fs, Path snapshotPath, String snapshotName, HiveConf conf)
       throws IOException {
     Retryable retryable = Retryable.builder().withHiveConf(conf).withRetryOnException(IOException.class)
-        .withFailOnException(SnapshotException.class).build();
+        .withFailOnException(IOException.class).build();
     try {
       retryable.executeCallable(() -> {
         try {
@@ -225,7 +224,7 @@ public class SnapshotUtils {
         return null;
       });
     } catch (Exception e) {
-      throw new SnapshotException(
+      throw new IOException(
           "Unable to create snapshot for path: " + snapshotPath + " snapshot name: " + snapshotName, e);
     }
   }
@@ -242,7 +241,7 @@ public class SnapshotUtils {
   public static void renameSnapshot(FileSystem fs, Path snapshotPath, String sourceSnapshotName,
       String targetSnapshotName, HiveConf conf) throws IOException {
     Retryable retryable = Retryable.builder().withHiveConf(conf).withRetryOnException(IOException.class)
-        .withFailOnException(SnapshotException.class).build();
+        .withFailOnException(IOException.class).build();
     try {
       retryable.executeCallable(() -> {
         try {
@@ -254,7 +253,7 @@ public class SnapshotUtils {
         return null;
       });
     } catch (Exception e) {
-      throw new SnapshotException(
+      throw new IOException(
           "Unable to rename snapshot " + sourceSnapshotName + " to " + targetSnapshotName + " for path: "
               + snapshotPath, e);
     }

@@ -1,13 +1,12 @@
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ *    http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,424 +15,303 @@
  * limitations under the License.
  */
 
-def discardDaysToKeep = '365'
-def discardNumToKeep = '' // Unlimited
-if (env.BRANCH_NAME != 'master') {
-  discardDaysToKeep = '60'
-  discardNumToKeep = '5'
-}
-properties([
-    buildDiscarder(logRotator(daysToKeepStr: discardDaysToKeep, numToKeepStr: discardNumToKeep)),
-    // max 5 build/branch/day
-    rateLimitBuilds(throttle: [count: 5, durationName: 'day', userBoost: true]),
-    // do not run multiple testruns on the same branch
-    disableConcurrentBuilds(),
-    parameters([
-        string(name: 'SPLIT', defaultValue: '22', description: 'Number of buckets to split tests into.'),
-        string(name: 'OPTS', defaultValue: '', description: 'additional maven opts'),
-    ])
-])
+@Library("jenkins-library@main")
 
-this.prHead = null;
-def checkPrHead() {
-  if(env.CHANGE_ID) {
-    println("checkPrHead - prHead:" + prHead)
-    println("checkPrHead - prHead2:" + pullRequest.head)
-    if (prHead == null) {
-      prHead = pullRequest.head;
-    } else {
-      if(prHead != pullRequest.head) {
-        currentBuild.result = 'ABORTED'
-        error('Found new changes on PR; aborting current build')
+import com.logicalclocks.jenkins.k8s.ImageBuilder
+
+pipeline {
+  agent { label 'local' }
+
+  options {
+    disableConcurrentBuilds()
+    skipDefaultCheckout(true)
+    timestamps()
+    buildDiscarder(logRotator(numToKeepStr: '20'))
+  }
+
+  parameters {
+    booleanParam(name: 'BUILD_IMAGE_ONLY', defaultValue: false, description: 'Only build and push the Docker image using an existing Hive package.')
+    string(name: 'BRANCH_TO_BUILD', defaultValue: 'hops-4.1.0', description: 'Git branch to build.')
+    string(name: 'MAVEN_CMD', defaultValue: 'mvn', description: 'Maven executable to use.')
+    string(name: 'MAVEN_ARGS', defaultValue: 'clean install deploy -Pdist -DskipTests -Denforcer.skip=true', description: 'Maven goals and arguments.')
+    string(name: 'MAVEN_DEPLOY_ARGS', defaultValue: 'deploy -Pdist -DskipTests -Denforcer.skip=true', description: 'Maven goals for the second publish to hops-artifacts. Must not include clean or the artifacts built by MAVEN_ARGS are discarded.')
+    booleanParam(name: 'PUBLISH_TO_HOPS_ARTIFACTS', defaultValue: true, description: 'Publish the artifacts to hops-artifacts in addition to hive-artifacts, so consumers can resolve io.hops.hive:* with the HopsEE credentials they already have.')
+    booleanParam(name: 'FORCE_UPDATE', defaultValue: true, description: 'Pass -U to Maven to refresh snapshot and cached dependency resolution.')
+  }
+
+  environment {
+    DOCKER_IMAGE = 'maven:3.9.9-eclipse-temurin-17'
+    HIVE_PACKAGE_DIR = '/opt/repository/master/hive'
+    HOST_MAVEN_REPO = '/home/jenkinsmaster/.m2'
+    MAVEN_LOCAL_REPO = '/maven-repo/repository'
+    MAVEN_OPTS = '-Xmx4G'
+    MAVEN_SETTINGS = "${WORKSPACE}@tmp/mvn-settings.xml"
+    HOPS_ARTIFACTS_URL = 'https://nexus.hops.works/repository/hops-artifacts'
+    // Nexus proxy of Maven Central, so repo.maven.apache.org stops rate-limiting (HTTP 429)
+    // the agent's IP. This softens the symptom only: the 429s are earned by the volume of
+    // doomed -tests.jar lookups shade makes, 2029 of them in build #32. See shadeTestJar in
+    // druid-handler/pom.xml for the cause.
+    CENTRAL_MIRROR_URL = 'https://nexus.hops.works/repository/cache-maven-public/'
+    // Be patient with 429/503 responses instead of failing the reactor after 3 tries.
+    MAVEN_RETRY_ARGS = '-Daether.connector.http.retryHandler.count=10 -Daether.connector.http.retryHandler.interval=15000'
+  }
+
+  stages {
+    stage('Checkout') {
+      steps {
+        deleteDir()
+        // Repo URL and credentials come from the job's SCM configuration; only the
+        // branch is overridden by the BRANCH_TO_BUILD parameter.
+        checkout([$class: 'GitSCM',
+          branches: [[name: "${params.BRANCH_TO_BUILD}"]],
+          userRemoteConfigs: scm.userRemoteConfigs
+        ])
       }
     }
-  }
-}
-checkPrHead()
 
-def setPrLabel(String prLabel) {
-  if (env.CHANGE_ID) {
-   def mapping=[
-    "SUCCESS":"tests passed",
-    "UNSTABLE":"tests unstable",
-    "FAILURE":"tests failed",
-    "PENDING":"tests pending",
-   ]
-   def newLabels = []
-   for( String l : pullRequest.labels )
-     newLabels.add(l)
-   for( String l : mapping.keySet() )
-     newLabels.remove(mapping[l])
-   newLabels.add(mapping[prLabel])
-   echo ('' +newLabels)
-   pullRequest.labels=newLabels
-  }
-}
+    stage('Prepare Maven') {
+      when {
+        expression { !params.BUILD_IMAGE_ONLY }
+      }
+      steps {
+        withCredentials([usernamePassword(credentialsId: 'a0770738-4ef3-4acc-a6ba-097ee6c85b44', passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')]) {
+          sh '''#!/bin/bash -eu
+            rm -rf "$WORKSPACE/.m2" "$HOST_MAVEN_REPO/repository/io/hops/hive"
+            mkdir -p "$(dirname "$MAVEN_SETTINGS")" "$HOST_MAVEN_REPO/repository"
 
-setPrLabel("PENDING");
+            # Only mirror central when a proxy URL is configured; an empty CENTRAL_MIRROR_URL
+            # must not emit a <mirror> with a blank <url>, which would break all resolution.
+            CENTRAL_MIRROR_XML=""
+            if [ -n "${CENTRAL_MIRROR_URL:-}" ]; then
+              CENTRAL_MIRROR_XML="<mirror>
+      <id>hops-central</id>
+      <name>Nexus proxy of Maven Central</name>
+      <url>${CENTRAL_MIRROR_URL}</url>
+      <mirrorOf>central</mirrorOf>
+    </mirror>"
+            fi
 
-def executorNode(run) {
-  hdbPodTemplate {
-    timeout(time: 12, unit: 'HOURS') {
-      node(POD_LABEL) {
-        container('hdb') {
-          run()
+            cat > "$MAVEN_SETTINGS" <<EOF
+<settings>
+  <localRepository>${MAVEN_LOCAL_REPO}</localRepository>
+  <servers>
+    <server>
+      <id>HopsEE</id>
+      <username>$USERNAME</username>
+      <password>$PASSWORD</password>
+    </server>
+    <server>
+      <id>Hops</id>
+      <username>$USERNAME</username>
+      <password>$PASSWORD</password>
+    </server>
+    <server>
+      <id>HopsHive</id>
+      <username>$USERNAME</username>
+      <password>$PASSWORD</password>
+    </server>
+    <server>
+      <id>hops-releases</id>
+      <username>$USERNAME</username>
+      <password>$PASSWORD</password>
+    </server>
+    <server>
+      <id>hive-releases</id>
+      <username>$USERNAME</username>
+      <password>$PASSWORD</password>
+    </server>
+    <server>
+      <id>hops-central</id>
+      <username>$USERNAME</username>
+      <password>$PASSWORD</password>
+    </server>
+    <server>
+      <id>Hive</id>
+      <username>$USERNAME</username>
+      <password>$PASSWORD</password>
+    </server>
+  </servers>
+  <mirrors>
+    <!--
+      Druid's poms declare repository.jboss.org over plain http, and Maven 3.8.1+
+      blocks every http:// repository through its built-in maven-default-http-blocker
+      mirror. org.hyperic:sigar:1.6.5.132 exists only in that JBoss repo (Central
+      returns 404 for it), so with JBoss blocked hive-druid-handler cannot resolve it.
+      Re-point the same repository id at its https URL.
+    -->
+    <mirror>
+      <id>jboss-public-https</id>
+      <name>JBoss public over https</name>
+      <url>https://repository.jboss.org/nexus/content/groups/public/</url>
+      <mirrorOf>repository.jboss.org</mirrorOf>
+    </mirror>
+    ${CENTRAL_MIRROR_XML}
+  </mirrors>
+</settings>
+EOF
+          '''
         }
       }
     }
-  }
-}
 
-def buildHive(args) {
-  configFileProvider([configFile(fileId: 'artifactory', variable: 'SETTINGS')]) {
-    withEnv(["MULTIPLIER=$params.MULTIPLIER","M_OPTS=$params.OPTS"]) {
-      sh '''#!/bin/bash -e
-set -x
-. /etc/profile.d/confs.sh
-export USER="`whoami`"
-export MAVEN_OPTS="-Xmx4G"
-export -n HIVE_CONF_DIR
-sw java 17 && . /etc/profile.d/java.sh
-mkdir -p .m2/repository
-cp $SETTINGS .m2/settings.xml
-OPTS=" -s $PWD/.m2/settings.xml -B -Dtest.groups= "
-OPTS+=" -Pitests,qsplits,dist,errorProne"
-OPTS+=" -Dmaven.repo.local=$PWD/.m2/repository"
-git config extra.mavenOpts "$OPTS"
-OPTS=" $M_OPTS -Dmaven.test.failure.ignore "
-if [ -s inclusions.txt ]; then OPTS+=" -Dsurefire.includesFile=$PWD/inclusions.txt";fi
-if [ -s exclusions.txt ]; then OPTS+=" -Dsurefire.excludesFile=$PWD/exclusions.txt";fi
-mvn $OPTS '''+args+'''
-du -h --max-depth=1
-df -h
-'''
-    }
-  }
-}
-
-def sonarAnalysis(args) {
-  withCredentials([string(credentialsId: 'sonar', variable: 'SONAR_TOKEN')]) {
-      def mvnCmd = """mvn org.sonarsource.scanner.maven:sonar-maven-plugin:3.9.1.2184:sonar \
-      -Dsonar.organization=apache \
-      -Dsonar.projectKey=apache_hive \
-      -Dsonar.host.url=https://sonarcloud.io \
-      """+args+" -DskipTests -Dit.skipTests -Dmaven.javadoc.skip"
-
-      sh """#!/bin/bash -e
-      sw java 17 && . /etc/profile.d/java.sh
-      export MAVEN_OPTS=-Xmx5G
-      """+mvnCmd
-  }
-}
-
-def hdbPodTemplate(closure) {
-  podTemplate(
-  containers: [
-    containerTemplate(name: 'hdb', image: 'wecharyu/hive-dev-box:executor', ttyEnabled: true, command: 'tini -- cat',
-        alwaysPullImage: true,
-        resourceRequestCpu: '1800m',
-        resourceLimitCpu: '8000m',
-        resourceRequestMemory: '6400Mi',
-        resourceLimitMemory: '12000Mi',
-        resourceRequestEphemeralStorage: '15Gi',
-        resourceLimitEphemeralStorage: '30Gi',
-        envVars: [
-            envVar(key: 'DOCKER_HOST', value: 'tcp://localhost:2376'),
-            envVar(key: 'DOCKER_TLS_VERIFY', value: '1'),
-            envVar(key: 'DOCKER_CERT_PATH', value: '/certs/client')
-        ]
-    ),
-    containerTemplate(name: 'dind', image: 'docker:20.10-dind',
-        alwaysPullImage: true,
-        privileged: true,
-        envVars: [
-            envVar(key: 'DOCKER_TLS_CERTDIR', value: '/certs')
-        ]
-    ),
-  ],
-  volumes: [
-    emptyDirVolume(mountPath: '/var/lib/docker', memory: false),
-    emptyDirVolume(mountPath: '/certs', memory: false)
-  ], yaml:'''
-spec:
-  securityContext:
-    fsGroup: 1000
-  tolerations:
-    - key: "type"
-      operator: "Equal"
-      value: "slave"
-      effect: "PreferNoSchedule"
-    - key: "type"
-      operator: "Equal"
-      value: "slave"
-      effect: "NoSchedule"
-  nodeSelector:
-    type: slave
-''') {
-    closure();
-  }
-}
-
-def jobWrappers(closure) {
-  def finalLabel="FAILURE";
-  try {
-    // allocate 1 precommit token for the execution
-    lock(label:'hive-precommit', quantity:1, variable: 'LOCKED_RESOURCE')  {
-      timestamps {
-        echo env.LOCKED_RESOURCE
-        checkPrHead()
-        closure()
-      }
-    }
-    finalLabel=currentBuild.currentResult
-  } finally {
-    setPrLabel(finalLabel)
-  }
-}
-
-def saveWS() {
-  sh '''#!/bin/bash -e
-    tar --exclude=archive.tar -cf archive.tar .
-    ls -l archive.tar
-    rsync -rltDq --stats archive.tar rsync://rsync/data/$LOCKED_RESOURCE'''
-}
-
-def loadWS() {
-  sh '''#!/bin/bash -e
-    rsync -rltDq --stats rsync://rsync/data/$LOCKED_RESOURCE archive.tar
-    time tar -xf archive.tar
-    rm archive.tar
-'''
-}
-
-def saveFile(name) {
-  sh """#!/bin/bash -e
-    rsync -rltDq --stats ${name} rsync://rsync/data/$LOCKED_RESOURCE.${name}"""
-}
-
-def loadFile(name) {
-  sh """#!/bin/bash -e
-    rsync -rltDq --stats rsync://rsync/data/$LOCKED_RESOURCE.${name} ${name}"""
-}
-
-
-jobWrappers {
-
-  def splits
-  executorNode {
-    container('hdb') {
-      stage('Checkout') {
-        if(env.CHANGE_ID) {
-          checkout([
-            $class: 'GitSCM',
-            branches: scm.branches,
-            doGenerateSubmoduleConfigurations: scm.doGenerateSubmoduleConfigurations,
-            extensions: [ cloneOption(honorRefspec: true, depth: 50, noTags: true, shallow: true) ],
-            userRemoteConfigs: scm.userRemoteConfigs + [[
-              name: 'origin',
-              refspec: scm.userRemoteConfigs[0].refspec+ " +refs/heads/${CHANGE_TARGET}:refs/remotes/origin/target",
-              url: scm.userRemoteConfigs[0].url,
-              credentialsId: scm.userRemoteConfigs[0].credentialsId
-            ]],
-          ])
-	  sh '''#!/bin/bash
-set -e
-echo "@@@ patches in the PR but not on target ($CHANGE_TARGET)"
-git log --oneline origin/target..HEAD
-echo "@@@ patches on target but not in the PR"
-git log --oneline HEAD..origin/target
-echo "@@@ merging target"
-git config --global user.email "you@example.com"
-git config --global user.name "Your Name"
-git merge origin/target
-'''
-
-        } else {
-          checkout scm
-        }
-      }
-      stage('Prechecks') {
-        def spotbugsProjects = [
-            ":hive-shims",
-            ":hive-storage-api",
-            ":hive-service-rpc"
-        ]
-        sh '''#!/bin/bash
-set -e
-xmlstarlet edit -L `find . -name pom.xml`
-git diff
-n=`git diff | wc -l`
-if [ $n != 0 ]; then
-  echo "!!! incorrectly formatted pom.xmls detected; see above!" >&2
-  exit 1
-fi
-'''
-        buildHive("-Pspotbugs -pl " + spotbugsProjects.join(",") + " -am test-compile com.github.spotbugs:spotbugs-maven-plugin:4.8.6.6:check")
-      }
-      stage('Compile') {
-        buildHive("install -Dtest=noMatches")
-      }
-      checkPrHead()
-      stage('Upload') {
-        saveWS()
-        sh '''#!/bin/bash -e
-            # make parallel-test-execution plugins source scanner happy ~ better results for 1st run
-            find . -name '*.java'|grep /Test|grep -v src/test/java|grep org/apache|while read f;do t="`echo $f|sed 's|.*org/apache|happy/src/test/java/org/apache|'`";mkdir -p  "${t%/*}";touch "$t";done
+    stage('Resolve Version') {
+      steps {
+        sh '''#!/bin/bash -eu
+          perl -0ne 'if (m{<artifactId>hive</artifactId>\\s*<version>([^<]+)</version>}) { print "$1"; exit }' pom.xml > version.log
+          echo "POM_VERSION=$(cat version.log)"
         '''
-        splits = splitTests parallelism: count(Integer.parseInt(params.SPLIT)), generateInclusions: true, estimateTestsFromFiles: true
       }
     }
-  }
 
-  def branches = [:]
-  for (def d in ['derby','postgres',/*'mysql','oracle'*/]) {
-    def dbType=d
-    def splitName = "init@$dbType"
-    branches[splitName] = {
-      executorNode {
-        stage('Prepare') {
-            loadWS();
-        }
-        stage('init-metastore') {
-           withEnv(["dbType=$dbType"]) {
-             sh '''#!/bin/bash -e
-             sw java 17 && . /etc/profile.d/java.sh
-set -x
-echo 127.0.0.1 dev_$dbType | sudo tee -a /etc/hosts
-. /etc/profile.d/confs.sh
-sw hive-dev $PWD
-export DOCKER_NETWORK=host
-export DBNAME=metastore
-export HADOOP_CLIENT_OPTS="--add-opens java.base/java.net=ALL-UNNAMED"
-reinit_metastore $dbType
-time docker rm -f dev_$dbType || true
-'''
-          }
-        }
+    stage('Build and Deploy') {
+      when {
+        expression { !params.BUILD_IMAGE_ONLY }
+      }
+      steps {
+        sh '''#!/bin/bash -eu
+          UPDATE_ARG=""
+          if [ "$FORCE_UPDATE" = "true" ]; then
+            UPDATE_ARG="-U"
+          fi
+
+          # Defaults are repeated here because this script runs under -u: Jenkins only exports a
+          # parameter as an environment variable once the job has registered it, which happens at
+          # the end of the first build after this file adds it. A build triggered with an explicit
+          # parameter set that omits these would hit the same gap.
+          PUBLISH_HOPS="${PUBLISH_TO_HOPS_ARTIFACTS:-true}"
+          DEPLOY_ARGS="${MAVEN_DEPLOY_ARGS:-deploy -Pdist -DskipTests -Denforcer.skip=true}"
+
+          # Both the root pom and standalone-metastore/pom.xml pin distributionManagement to
+          # the Hive repo (hive-artifacts). altDeploymentRepository overrides that for every
+          # module in the reactor, so a second deploy publishes the same artifacts to
+          # hops-artifacts without touching either pom. maven-deploy-plugin is 2.8.2 (inherited
+          # from org.apache:apache:23), which requires the three-part id::layout::url form.
+          ALT_DEPLOY_REPO=""
+          if [ "$PUBLISH_HOPS" = "true" ]; then
+            ALT_DEPLOY_REPO="HopsEE::default::${HOPS_ARTIFACTS_URL}"
+          fi
+
+          docker run --rm \
+            -u "$(id -u):$(id -g)" \
+            -v "$WORKSPACE:$WORKSPACE" \
+            -v "$(dirname "$MAVEN_SETTINGS"):$(dirname "$MAVEN_SETTINGS")" \
+            -v "$HOST_MAVEN_REPO:/maven-repo" \
+            -w "$WORKSPACE" \
+            -e GITHUB_ACTIONS=true \
+            -e HOME=/tmp \
+            -e MAVEN_CONFIG=/tmp/maven-config \
+            -e MAVEN_LOCAL_REPO="$MAVEN_LOCAL_REPO" \
+            -e MAVEN_OPTS="$MAVEN_OPTS" \
+            -e MAVEN_CMD="$MAVEN_CMD" \
+            -e MAVEN_SETTINGS="$MAVEN_SETTINGS" \
+            -e MAVEN_ARGS="$MAVEN_ARGS" \
+            -e MAVEN_DEPLOY_ARGS="$DEPLOY_ARGS" \
+            -e ALT_DEPLOY_REPO="$ALT_DEPLOY_REPO" \
+            -e MAVEN_RETRY_ARGS="$MAVEN_RETRY_ARGS" \
+            -e UPDATE_ARG="$UPDATE_ARG" \
+            "$DOCKER_IMAGE" \
+            bash -lc '
+              set -eu
+              export PATH="$JAVA_HOME/bin:$PATH"
+              JAVA_VERSION="$("$JAVA_HOME/bin/java" -XshowSettings:properties -version 2>&1 | awk -F"= " "/java.specification.version =/{print \\$2; exit}")"
+              if [ "$JAVA_VERSION" != "17" ]; then
+                echo "Java 17 is required, but JAVA_HOME=$JAVA_HOME reports java.specification.version=$JAVA_VERSION" >&2
+                exit 1
+              fi
+              test -x "$JAVA_HOME/bin/javadoc"
+              "$MAVEN_CMD" -s "$MAVEN_SETTINGS" -Dmaven.repo.local="$MAVEN_LOCAL_REPO" $MAVEN_RETRY_ARGS $UPDATE_ARG $MAVEN_ARGS
+
+              if [ -n "$ALT_DEPLOY_REPO" ]; then
+                echo "Publishing the same artifacts to $ALT_DEPLOY_REPO"
+                "$MAVEN_CMD" -s "$MAVEN_SETTINGS" -Dmaven.repo.local="$MAVEN_LOCAL_REPO" $MAVEN_RETRY_ARGS \
+                  $MAVEN_DEPLOY_ARGS -DaltDeploymentRepository="$ALT_DEPLOY_REPO"
+              fi
+            '
+        '''
       }
     }
-  }
-  branches['nightly-check'] = {
-      executorNode {
-        stage('Prepare') {
-            loadWS();
-        }
-        stage('Build') {
-            sh '''#!/bin/bash
-set -e
-dev-support/nightly
-'''
-            buildHive("install -Dtest=noMatches -Pdist -pl packaging -am")
-        }
-        stage('Verify') {
-            sh '''#!/bin/bash
-set -e
-tar -xzf packaging/target/apache-hive-*-nightly-*-src.tar.gz
-'''
-            buildHive("install -Dtest=noMatches -Pdist -f apache-hive-*-nightly-*/pom.xml")
-        }
+
+    stage('Copy Hive Package') {
+      when {
+        expression { !params.BUILD_IMAGE_ONLY }
       }
-  }
-  branches['sonar'] = {
-      executorNode {
-          if(env.BRANCH_NAME == 'master') {
-              stage('Prepare') {
-                  loadWS();
-              }
-              stage('Sonar') {
-                  sonarAnalysis("-Dsonar.branch.name=${BRANCH_NAME}")
-              }
-          } else if(env.CHANGE_ID) {
-              stage('Prepare') {
-                  loadWS();
-              }
-              stage('Sonar') {
-                  sonarAnalysis("""-Dsonar.pullrequest.github.repository=apache/hive \
-                                   -Dsonar.pullrequest.key=${CHANGE_ID} \
-                                   -Dsonar.pullrequest.branch=${CHANGE_BRANCH} \
-                                   -Dsonar.pullrequest.base=${CHANGE_TARGET} \
-                                   -Dsonar.pullrequest.provider=GitHub""")
-              }
-          } else {
-              echo "Skipping sonar analysis, we only run it on PRs and on the master branch, found ${env.BRANCH_NAME}"
-          }
+      steps {
+        sh '''#!/bin/bash -eu
+          HIVE_VERSION="$(tr -d '\\r\\n' < version.log)"
+          mkdir -p "$HIVE_PACKAGE_DIR"
+
+          docker run --rm \
+            -u "$(id -u):$(id -g)" \
+            -v "$WORKSPACE:$WORKSPACE" \
+            -v "$(dirname "$MAVEN_SETTINGS"):$(dirname "$MAVEN_SETTINGS")" \
+            -v "$HOST_MAVEN_REPO:/maven-repo" \
+            -v "$HIVE_PACKAGE_DIR:$HIVE_PACKAGE_DIR" \
+            -w "$WORKSPACE" \
+            -e GITHUB_ACTIONS=true \
+            -e HOME=/tmp \
+            -e MAVEN_CONFIG=/tmp/maven-config \
+            -e MAVEN_LOCAL_REPO="$MAVEN_LOCAL_REPO" \
+            -e MAVEN_OPTS="$MAVEN_OPTS" \
+            -e MAVEN_CMD="$MAVEN_CMD" \
+            -e MAVEN_SETTINGS="$MAVEN_SETTINGS" \
+            -e HIVE_PACKAGE_DIR="$HIVE_PACKAGE_DIR" \
+            -e HIVE_VERSION="$HIVE_VERSION" \
+            "$DOCKER_IMAGE" \
+            bash -lc '
+              set -eu
+              "$MAVEN_CMD" -s "$MAVEN_SETTINGS" -Dmaven.repo.local="$MAVEN_LOCAL_REPO" dependency:copy \
+                -Dartifact=io.hops.hive:hive-packaging:${HIVE_VERSION}:tar.gz:bin \
+                -DoutputDirectory="$HIVE_PACKAGE_DIR" \
+                -Dmdep.stripVersion=true \
+                -U
+              mv "$HIVE_PACKAGE_DIR/hive-packaging-bin.tar.gz" "$HIVE_PACKAGE_DIR/hive-packaging-${HIVE_VERSION}-bin.tar.gz"
+            '
+
+          ls -l "$HIVE_PACKAGE_DIR/hive-packaging-${HIVE_VERSION}-bin.tar.gz"
+        '''
       }
-  }
-  for (int i = 0; i < splits.size(); i++) {
-    def num = i
-    def split = splits[num]
-    def splitName=String.format("split-%02d",num+1)
-    branches[splitName] = {
-      executorNode {
-        stage('Prepare') {
-            loadWS();
-            writeFile file: (split.includes ? "inclusions.txt" : "exclusions.txt"), text: split.list.join("\n")
-            writeFile file: (split.includes ? "exclusions.txt" : "inclusions.txt"), text: ''
-            sh '''echo "@INC";cat inclusions.txt;echo "@EXC";cat exclusions.txt;echo "@END"'''
-        }
-        try {
-          stage('Test') {
-            buildHive("org.apache.maven.plugins:maven-antrun-plugin:run@{define-classpath,setup-test-dirs,setup-metastore-scripts} org.apache.maven.plugins:maven-surefire-plugin:test")
+    }
+
+    stage('Build and Push Images') {
+      steps {
+        script {
+          def version = readFile("${env.WORKSPACE}/version.log").trim()
+          def imageBuildVersion = readFile("${env.WORKSPACE}/dockerfiles/image-build-version.properties")
+              .readLines()
+              .find { line -> line.trim() && !line.trim().startsWith('#') && line.contains('IMAGE_BUILD_VERSION=') }
+              ?.split('=', 2)[1]
+              ?.trim()
+
+          if (!imageBuildVersion) {
+            error('IMAGE_BUILD_VERSION is missing from dockerfiles/image-build-version.properties')
           }
-        } finally {
-          stage('PostProcess') {
-            try {
-              sh """#!/bin/bash -e
-                FAILED_FILES=`find . -name "TEST*xml" -exec grep -l "<failure" {} \\; 2>/dev/null | head -n 10`
-                for a in \$FAILED_FILES
-                do
-                  RENAME_TMP=`echo \$a | sed s/TEST-//g`
-                  mv \${RENAME_TMP/.xml/-output.txt} \${RENAME_TMP/.xml/-output-save.txt}
-                done
-                # remove all output.txt files
-                find . -name '*output.txt' -path '*/surefire-reports/*' -exec unlink "{}" \\;
-              """
-            } finally {
-              def fn="${splitName}.tgz"
-              sh """#!/bin/bash -e
-              tar -czf ${fn} --files-from  <(find . -path '*/surefire-reports/*')"""
-              saveFile(fn)
-              junit '**/TEST-*.xml'
+
+          withCredentials([usernamePassword(credentialsId: 'a0770738-4ef3-4acc-a6ba-097ee6c85b44', passwordVariable: 'PASSWORD', usernameVariable: 'USERNAME')]) {
+            withEnv(["HIVE_VERSION=${version}", "IMAGE_BUILD_VERSION=${imageBuildVersion}"]) {
+              def builder = new ImageBuilder(this)
+
+              sh '''#!/bin/bash -eu
+                test -f "$HIVE_PACKAGE_DIR/hive-packaging-${HIVE_VERSION}-bin.tar.gz"
+                cp "$HIVE_PACKAGE_DIR/hive-packaging-${HIVE_VERSION}-bin.tar.gz" "$WORKSPACE/dockerfiles/hive-packaging-${HIVE_VERSION}-bin.tar.gz"
+                printf "user=%s\npassword=%s" "$USERNAME" "$PASSWORD" > "$WORKSPACE/dockerfiles/wgetrc"
+                ls -l "$WORKSPACE/dockerfiles"
+              '''
+
+              def manifest = readFile("${env.WORKSPACE}/dockerfiles/build-manifest.json")
+              builder.run(manifest)
             }
           }
         }
       }
     }
   }
-  branches['javadoc-check'] = {
-    executorNode {
-      stage('Prepare') {
-          loadWS();
-      }
-      stage('Generate javadoc') {
-          sh """#!/bin/bash -e
-          sw java 17 && . /etc/profile.d/java.sh
-mvn install javadoc:javadoc javadoc:aggregate -DskipTests -pl '!itests/hive-jmh,!itests/util'
-"""
-      }
-    }
-  }
-  try {
-    stage('Testing') {
-      parallel branches
-    }
-  } finally {
-    stage('Archive') {
-      executorNode {
-        for (int i = 0; i < splits.size(); i++) {
-          def num = i
-          def splitName=String.format("split-%02d",num+1)
-          def fn="${splitName}.tgz"
-          loadFile(fn)
-          sh("""#!/bin/bash -e
-              mkdir ${splitName}
-              tar xzf ${fn} -C ${splitName}
-              unlink ${fn}""")
-        }
-        sh("""#!/bin/bash -e
-        tar czf test-results.tgz split*""")
-        archiveArtifacts artifacts: "**/test-results.tgz"
-      }
+
+  post {
+    always {
+      sh '''#!/bin/bash
+        rm -f "$MAVEN_SETTINGS"
+      '''
+      archiveArtifacts artifacts: 'version.log', allowEmptyArchive: true
     }
   }
 }

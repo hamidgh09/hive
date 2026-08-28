@@ -34,6 +34,8 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.IllegalFormatException;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class HiveSchemaHelper {
   private static final Logger LOG = LoggerFactory.getLogger(HiveSchemaHelper.class);
@@ -408,6 +410,10 @@ public class HiveSchemaHelper {
   public static class MySqlCommandParser extends AbstractCommandParser {
     private static final String MYSQL_NESTING_TOKEN = "SOURCE";
     private static final String DELIMITER_TOKEN = "DELIMITER";
+    private static final String MYSQL_ENGINE_TYPE_CONF = "datanucleus.rdbms.mysql.engineType";
+    private static final Pattern INNODB_ENGINE =
+        Pattern.compile("\\bENGINE\\s*=\\s*InnoDB\\b", Pattern.CASE_INSENSITIVE);
+    private static final Pattern MYSQL_ENGINE_NAME = Pattern.compile("[A-Za-z0-9_]+");
     private String delimiter = DEFAULT_DELIMITER;
 
     public MySqlCommandParser(String dbOpts, String msUsername, String msPassword,
@@ -468,7 +474,27 @@ public class HiveSchemaHelper {
 
     @Override
     public String cleanseCommand(String dbCommand) {
-      return super.cleanseCommand(dbCommand).replaceAll("/\\*.*?\\*/[^;]", "");
+      String command = super.cleanseCommand(dbCommand).replaceAll("/\\*.*?\\*/[^;]", "");
+      return rewriteConfiguredEngine(command);
+    }
+
+    private String rewriteConfiguredEngine(String dbCommand) {
+      Configuration conf = getConf();
+      if (conf == null) {
+        return dbCommand;
+      }
+
+      String engineType = conf.get(MYSQL_ENGINE_TYPE_CONF);
+      if (engineType == null || engineType.trim().isEmpty()
+          || engineType.trim().equalsIgnoreCase("InnoDB")) {
+        return dbCommand;
+      }
+
+      engineType = engineType.trim();
+      if (!MYSQL_ENGINE_NAME.matcher(engineType).matches()) {
+        throw new IllegalArgumentException("Invalid MySQL engine type: " + engineType);
+      }
+      return INNODB_ENGINE.matcher(dbCommand).replaceAll(Matcher.quoteReplacement("ENGINE=" + engineType));
     }
 
   }

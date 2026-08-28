@@ -39,13 +39,13 @@
             <useTransitiveDependencies>true</useTransitiveDependencies>
             <includes>
                 <include>org.apache.hadoop:hadoop-common:jar</include>
-                <include>org.apache.hive:hive-beeline:jar</include>
-                <include>org.apache.hive:hive-common:jar</include>
-                <include>org.apache.hive:hive-exec:jar</include>
-                <include>org.apache.hive:hive-jdbc</include>
-                <include>org.apache.hive:hive-serde:jar</include>
-                <include>org.apache.hive:hive-service:jar</include>
-                <include>org.apache.hive:hive-service-rpc:jar</include>
+                <include>io.hops.hive:hive-beeline:jar</include>
+                <include>io.hops.hive:hive-common:jar</include>
+                <include>io.hops.hive:hive-exec:jar</include>
+                <include>io.hops.hive:hive-jdbc</include>
+                <include>io.hops.hive:hive-serde:jar</include>
+                <include>io.hops.hive:hive-service:jar</include>
+                <include>io.hops.hive:hive-service-rpc:jar</include>
                 <include>commons-cli:commons-cli:jar</include>
                 <include>commons-io:commons-io:jar</include>
                 <include>commons-logging:commons-logging:jar</include>
@@ -55,7 +55,7 @@
                 <include>net.sf.supercsv:super-csv:jar</include>
             </includes>
             <excludes>
-                <exclude>org.apache.hive:hive-jdbc:*:standalone</exclude>
+                <exclude>io.hops.hive:hive-jdbc:*:standalone</exclude>
             </excludes>
         </dependencySet>
     </dependencySets>

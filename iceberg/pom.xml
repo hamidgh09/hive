@@ -12,7 +12,7 @@
 -->
 <project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <parent>
-    <groupId>org.apache.hive</groupId>
+    <groupId>io.hops.hive</groupId>
     <artifactId>hive</artifactId>
     <version>4.1.0</version>
     <relativePath>../pom.xml</relativePath>
@@ -56,12 +56,12 @@
   <dependencyManagement>
     <dependencies>
       <dependency>
-        <groupId>org.apache.hive</groupId>
+        <groupId>io.hops.hive</groupId>
         <artifactId>patched-iceberg-api</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.apache.hive</groupId>
+        <groupId>io.hops.hive</groupId>
         <artifactId>patched-iceberg-core</artifactId>
         <version>${project.version}</version>
       </dependency>
@@ -96,17 +96,17 @@
         <version>${iceberg.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.apache.hive</groupId>
+        <groupId>io.hops.hive</groupId>
         <artifactId>hive-iceberg-catalog</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.apache.hive</groupId>
+        <groupId>io.hops.hive</groupId>
         <artifactId>hive-iceberg-shading</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.apache.hive</groupId>
+        <groupId>io.hops.hive</groupId>
         <artifactId>hive-exec</artifactId>
         <version>${project.version}</version>
         <exclusions>
@@ -123,7 +123,7 @@
             <artifactId>avro</artifactId>
           </exclusion>
           <exclusion>
-            <groupId>org.apache.hive</groupId>
+            <groupId>io.hops.hive</groupId>
             <artifactId>hive-llap-tez</artifactId>
           </exclusion>
           <exclusion>
@@ -141,17 +141,17 @@
         </exclusions>
       </dependency>
       <dependency>
-        <groupId>org.apache.hive</groupId>
+        <groupId>io.hops.hive</groupId>
         <artifactId>hive-serde</artifactId>
         <version>${project.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.apache.hive</groupId>
+        <groupId>io.hops.hive</groupId>
         <artifactId>hive-standalone-metastore-common</artifactId>
         <version>${standalone-metastore.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.apache.hadoop</groupId>
+        <groupId>io.hops</groupId>
         <artifactId>hadoop-client</artifactId>
         <version>${hadoop.version}</version>
         <exclusions>
@@ -168,24 +168,24 @@
       </dependency>
       <!-- test dependencies -->
       <dependency>
-        <groupId>org.apache.hive</groupId>
+        <groupId>io.hops.hive</groupId>
         <artifactId>hive-service</artifactId>
         <version>${project.version}</version>
         <exclusions>
           <exclusion>
-            <groupId>org.apache.hive</groupId>
+            <groupId>io.hops.hive</groupId>
             <artifactId>hive-exec</artifactId>
           </exclusion>
         </exclusions>
       </dependency>
       <dependency>
-        <groupId>org.apache.hive</groupId>
+        <groupId>io.hops.hive</groupId>
         <artifactId>hive-standalone-metastore-server</artifactId>
         <classifier>tests</classifier>
         <version>${standalone-metastore.version}</version>
       </dependency>
       <dependency>
-        <groupId>org.apache.hive</groupId>
+        <groupId>io.hops.hive</groupId>
         <artifactId>hive-iceberg-catalog</artifactId>
         <classifier>tests</classifier>
         <version>${project.version}</version>

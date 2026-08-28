@@ -85,7 +85,6 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsAction;
-import org.apache.hadoop.hdfs.DFSUtilClient;
 import org.apache.hadoop.hive.common.FileUtils;
 import org.apache.hadoop.hive.common.StatsSetupConst;
 import org.apache.hadoop.hive.common.StatsSetupConst.StatDB;
@@ -2860,7 +2859,7 @@ public class SemanticAnalyzer extends BaseSemanticAnalyzer {
   static Path getStagingDirectoryPathname(QB qb, HiveConf conf, Context ctx) throws HiveException {
     Path stagingPath = null, tablePath = null;
 
-    if (DFSUtilClient.isHDFSEncryptionEnabled(conf)) {
+    if (false) { // HopsFS does not support HDFS encryption zones
       // Looks for the most encrypted table location
       // It may return null if there are not tables encrypted, or are not part of HDFS
       tablePath = getStrongestEncryptedTablePath(qb, conf);

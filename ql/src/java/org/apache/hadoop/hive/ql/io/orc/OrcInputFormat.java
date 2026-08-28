@@ -19,7 +19,6 @@
 package org.apache.hadoop.hive.ql.io.orc;
 
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.hadoop.hdfs.protocol.HdfsLocatedFileStatus;
 import org.apache.hadoop.hive.common.BlobStorageUtils;
 import org.apache.hadoop.hive.common.NoDynamicValuesException;
 import org.apache.hadoop.hdfs.DistributedFileSystem;
@@ -1175,17 +1174,8 @@ public class OrcInputFormat implements InputFormat<NullWritable, OrcStruct>,
                 // This can happen with HDFS if hflush was called and blocks are not persisted to disk yet, but content
                 // is otherwise available for readers, as DNs have these buffers in memory at this time.
                 // -> we should read more than (persisted) block end, but only within the block
-                if (fileStatus instanceof HdfsLocatedFileStatus) {
-                  HdfsLocatedFileStatus hdfsFileStatus = (HdfsLocatedFileStatus)fileStatus;
-                  if (hdfsFileStatus.getLocatedBlocks().isUnderConstruction()) {
-                    // sanity check
-                    if (logicalLen > blockOffset + hdfsFileStatus.getBlockSize()) {
-                      throw new IOException("Side file indicates more data available after the last known block!");
-                    }
-                    // blockEndOvershoot is negative here...
-                    splitLength -= blockEndOvershoot;
-                  }
-                }
+                // HopsFS does not expose HdfsLocatedFileStatus/getLocatedBlocks;
+                // blocks are always fully persisted so hflush under-construction check is skipped.
               }
               OrcSplit orcSplit = new OrcSplit(fileStatus.getPath(), fileKey, blockOffset,
                   splitLength, entry.getValue().getHosts(), null, isOriginal, true,

@@ -66,7 +66,11 @@ public class LlapPluginEndpointClientImpl extends
   protected LlapPluginProtocolPB createProtocolImpl(Configuration conf,
       String hostname, int port, UserGroupInformation ugi,
       RetryPolicy retryPolicy, SocketFactory socketFactory) {
-    return new LlapPluginProtocolClientImpl(conf, hostname, port, retryPolicy, socketFactory, ugi);
+    try {
+      return new LlapPluginProtocolClientImpl(conf, hostname, port, retryPolicy, socketFactory, ugi);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override

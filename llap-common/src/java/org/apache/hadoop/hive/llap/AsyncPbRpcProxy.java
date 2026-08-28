@@ -516,7 +516,11 @@ public abstract class AsyncPbRpcProxy<ProtocolType, TokenType extends TokenIdent
       cb.maximumSize(expectedNodes * 2);
     }
     this.hostProxies = cb.build();
-    this.socketFactory = NetUtils.getDefaultSocketFactory(conf);
+    try {
+      this.socketFactory = NetUtils.getDefaultSocketFactory(conf);
+    } catch (java.io.IOException e) {
+      throw new RuntimeException("Failed to create socket factory", e);
+    }
 
     try {
       setToken(token);

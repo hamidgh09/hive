@@ -42,7 +42,9 @@ import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.security.authorize.ProxyUsers;
 import org.apache.hive.service.cli.HiveSQLException;
 import org.apache.hive.service.rpc.thrift.TCLIService;
+import org.apache.thrift.TProcessor;
 import org.apache.thrift.TProcessorFactory;
+import org.apache.thrift.transport.TTransport;
 import org.apache.thrift.transport.TSaslServerTransport;
 import org.apache.thrift.transport.TTransportException;
 import org.apache.thrift.transport.TTransportFactory;
@@ -136,7 +138,11 @@ public class HiveAuthFactory {
     } else if (authType.isPasswordBasedAuthEnabled()) {
       String authTypeStr = authType.getPasswordBasedAuthStr();
       transportFactory = PlainSaslHelper.getPlainTransportFactory(authTypeStr);
-    } else if (authType.isEnabled(HiveAuthConstants.AuthTypes.NOSASL)) {
+    } else if (authType.isEnabled(HiveAuthConstants.AuthTypes.NOSASL)
+        || authType.isEnabled(HiveAuthConstants.AuthTypes.HOPS)
+        || authType.isEnabled(HiveAuthConstants.AuthTypes.CERTIFICATES)) {
+      // For HOPS/CERTIFICATES the client is authenticated during the TLS handshake and the
+      // identity is taken from the peer certificate by TSSLBasedProcessor, so no SASL layer.
       transportFactory = new TTransportFactory();
     } else {
       throw new LoginException("Unsupported authentication type " + authType.getAuthTypes());
@@ -158,6 +164,15 @@ public class HiveAuthFactory {
   public TProcessorFactory getAuthProcFactory(TCLIService.Iface service) throws LoginException {
     if (isSASLWithKerberizedHadoop()) {
       return KerberosSaslHelper.getKerberosProcessorFactory(saslServer, service);
+    } else if (authType.isEnabled(HiveAuthConstants.AuthTypes.CERTIFICATES)
+        || authType.isEnabled(HiveAuthConstants.AuthTypes.HOPS)) {
+      final HiveConf hiveConf = this.conf;
+      return new TProcessorFactory(null) {
+        @Override
+        public TProcessor getProcessor(TTransport transport) {
+          return new TSSLBasedProcessor<>(service, hiveConf);
+        }
+      };
     } else {
       return PlainSaslHelper.getPlainProcessorFactory(service);
     }

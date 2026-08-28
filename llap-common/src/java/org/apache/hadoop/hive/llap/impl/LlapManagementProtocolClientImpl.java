@@ -46,7 +46,7 @@ public class LlapManagementProtocolClientImpl implements LlapManagementProtocolP
 
   public LlapManagementProtocolClientImpl(Configuration conf, String hostname, int port,
                                       @Nullable RetryPolicy retryPolicy,
-                                      @Nullable SocketFactory socketFactory) {
+                                      @Nullable SocketFactory socketFactory) throws java.io.IOException {
     this.conf = conf;
     this.serverAddr = NetUtils.createSocketAddr(hostname, port);
     this.retryPolicy = retryPolicy;

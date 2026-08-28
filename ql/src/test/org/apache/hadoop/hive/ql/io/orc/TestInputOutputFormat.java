@@ -50,8 +50,6 @@ import java.util.TreeSet;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.permission.FsPermission;
-import org.apache.hadoop.hdfs.protocol.HdfsLocatedFileStatus;
-import org.apache.hadoop.hdfs.protocol.LocatedBlocks;
 import org.apache.hadoop.hive.common.ValidReadTxnList;
 import org.apache.hadoop.hive.common.ValidTxnList;
 import org.apache.hadoop.hive.common.ValidWriteIdList;
@@ -1509,23 +1507,8 @@ public class TestInputOutputFormat {
 
     private LocatedFileStatus createLocatedStatus(MockFile file) throws IOException {
       FileStatus fileStatus = createStatus(file);
-      if (file.isHdfsHflushed) {
-        // Should work the same way as the local status except for having isUnderConstruction flag set to true and
-        // having HdfsLocatedFileStatus type
-        LocatedBlocks lb = new LocatedBlocks(fileStatus.getLen(), true, null, null, false, null, null);
-        HdfsLocatedFileStatus mockStatus = mock(HdfsLocatedFileStatus.class);
-        when(mockStatus.getLocatedBlocks()).thenReturn(lb);
-        when(mockStatus.getPath()).thenReturn(fileStatus.getPath());
-        when(mockStatus.getLen()).thenReturn(fileStatus.getLen());
-        when(mockStatus.isDirectory()).thenReturn(false);
-        when(mockStatus.isFile()).thenReturn(true);
-        when(mockStatus.getBlockSize()).thenReturn(fileStatus.getBlockSize());
-        when(mockStatus.getBlockLocations()).thenReturn(getFileBlockLocationsImpl(fileStatus, 0, fileStatus.getLen(),
-            false));
-        return mockStatus;
-      } else {
-        return new LocatedFileStatus(fileStatus, getFileBlockLocationsImpl(fileStatus, 0, fileStatus.getLen(), false));
-      }
+      // HopsFS does not support HDFS hflush under-construction blocks; always use plain LocatedFileStatus
+      return new LocatedFileStatus(fileStatus, getFileBlockLocationsImpl(fileStatus, 0, fileStatus.getLen(), false));
     }
 
     private LocatedFileStatus createLocatedDirectory(Path dir) throws IOException {

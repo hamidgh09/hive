@@ -111,8 +111,11 @@ public class LlapProtocolClientProxy
     }
     LOG.info("Initializing periodic token refresh in AM, will run in every {}s",
         LLAP_TOKEN_REFRESH_INTERVAL_IN_AM_SECONDS);
-    tokenClient = new LlapTokenClient(conf);
-
+    try {
+      tokenClient = new LlapTokenClient(conf);
+    } catch (java.io.IOException e) {
+      throw new RuntimeException("Failed to create LlapTokenClient", e);
+    }
     newTokenChecker.scheduleAtFixedRate(this::fetchToken, 0, LLAP_TOKEN_REFRESH_INTERVAL_IN_AM_SECONDS,
         TimeUnit.SECONDS);
   }
@@ -220,7 +223,11 @@ public class LlapProtocolClientProxy
   @Override
   protected LlapProtocolBlockingPB createProtocolImpl(Configuration config, String hostname, int port,
       UserGroupInformation ugi, RetryPolicy retryPolicy, SocketFactory socketFactory) {
-    return new LlapProtocolClientImpl(config, hostname, port, ugi, retryPolicy, socketFactory);
+    try {
+      return new LlapProtocolClientImpl(config, hostname, port, ugi, retryPolicy, socketFactory);
+    } catch (java.io.IOException e) {
+      throw new RuntimeException("Failed to create LlapProtocolClientImpl", e);
+    }
   }
 
   @Override

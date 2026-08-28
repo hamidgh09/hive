@@ -42,7 +42,7 @@ public class ProtobufProxy<BlockingInterface> {
 
   public ProtobufProxy(Configuration conf, UserGroupInformation ugi,
       String hostname, int port, @Nullable RetryPolicy retryPolicy,
-      @Nullable SocketFactory socketFactory, Class<?> blockingInterfaceClass) {
+      @Nullable SocketFactory socketFactory, Class<?> blockingInterfaceClass) throws IOException {
     this.conf = conf;
     this.serverAddr = NetUtils.createSocketAddr(hostname, port);
     this.retryPolicy = retryPolicy;

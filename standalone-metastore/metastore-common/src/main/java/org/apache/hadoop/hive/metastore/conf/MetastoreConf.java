@@ -171,6 +171,7 @@ public class MetastoreConf {
   @SuppressFBWarnings(value = "MS_MUTABLE_ARRAY")
   public static final MetastoreConf.ConfVars[] metaVars = {
       ConfVars.WAREHOUSE,
+      ConfVars.ENFORCE_WAREHOUSE_AUTHORITY,
       ConfVars.REPLDIR,
       ConfVars.THRIFT_URIS,
       ConfVars.SERVER_PORT,
@@ -1757,6 +1758,11 @@ public class MetastoreConf {
         "validates existing schema against code. turn this on if you want to verify existing schema"),
     WAREHOUSE("metastore.warehouse.dir", "hive.metastore.warehouse.dir", "/user/hive/warehouse",
         "location of default database for the warehouse"),
+    ENFORCE_WAREHOUSE_AUTHORITY("metastore.warehouse.enforce.authority",
+        "hive.metastore.warehouse.enforce.authority", false,
+        "Enforce warehouse authority to be the same as the one specified in the\n" +
+        "metastore.warehouse.dir option. Leave this off when tables may live on a\n" +
+        "filesystem other than the warehouse one."),
     WAREHOUSE_EXTERNAL("metastore.warehouse.external.dir",
         "hive.metastore.warehouse.external.dir", "",
         "Default location for external tables created in the warehouse. " +
@@ -1765,6 +1771,8 @@ public class MetastoreConf {
         "hive.metastore.wm.default.pool.size", 4,
         "The size of a default pool to create when creating an empty resource plan;\n" +
         "If not positive, no default pool will be created."),
+    METASTORE_HOPS_HIVE_TLS("metastore.hops.tls.enabled", "hive.metastore.hops.tls.enabled",
+      true, "Enable Hops TLS authentication"),
     RAWSTORE_PARTITION_BATCH_SIZE("metastore.rawstore.batch.size",
         "metastore.rawstore.batch.size", -1,
         "Batch size for partition and other object retrieval from the underlying DB in JDO.\n" +
@@ -1931,6 +1939,16 @@ public class MetastoreConf {
         "The maximum non-native tables allowed per table type during collecting the summary."),
     METADATA_SUMMARY_NONNATIVE_THREADS("hive.metatool.summary.nonnative.threads", "hive.metatool.summary.nonnative.threads", 20,
         "Number of threads to be allocated for MetaToolTaskMetadataSummary for collecting the non-native table's summary."),
+
+    HIVE_SUPER_USER("hive.superuser", "hive.superuser", "hive", "The user to use to create databases"),
+    HIVE_SUPERUSER_ALLOWED_IMPERSONATION("hive.superuser.impersonation-users", "hive.superuser.impersonation-users", "",
+            "User that are allowed to impersonate the Hive superuser"),
+    CERT_RELOAD_THREAD_SLEEP("cert.reload.thread.sleep", "cert.reload.thread.sleep", 60000,
+        "Sleep time for the certificate reloader thread - default 1m"),
+    LOCATION_SCHEME_REWRITE("metastore.location.scheme.rewrite",
+        "hive.metastore.location.scheme.rewrite", "",
+        "Rewrite the scheme of locations returned by the metastore client. " +
+            "Format is \"source_scheme,target_scheme\" (e.g. \"hdfs,rahdfs\"). Leave empty to disable."),
 
     // These are all values that we put here just for testing
     STR_TEST_ENTRY("test.str", "hive.test.str", "defaultval", "comment"),

@@ -25,7 +25,6 @@ import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.PathFilter;
-import org.apache.hadoop.hdfs.protocol.SnapshotException;
 import org.apache.hadoop.hive.common.TableName;
 import org.apache.hadoop.hive.common.ValidTxnList;
 import org.apache.hadoop.hive.common.repl.ReplConst;
@@ -326,7 +325,7 @@ public class ReplUtils {
   public static int handleException(boolean isReplication, Throwable e, String nonRecoverablePath,
                                     ReplicationMetricCollector metricCollector, String stageName, HiveConf conf){
     int errorCode;
-    if (isReplication && e instanceof SnapshotException) {
+    if (isReplication && e instanceof IOException) {
       errorCode = ErrorMsg.getErrorMsg("SNAPSHOT_ERROR").getErrorCode();
     } else {
       errorCode = ErrorMsg.getErrorMsg(e.getMessage()).getErrorCode();

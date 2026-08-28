@@ -138,6 +138,12 @@ class MetaStoreDirectSql {
   private final PersistenceManager pm;
   private final Configuration conf;
   private final String schema;
+  /**
+   * HopsFS: direct SQL is the fast path for most list/get metadata operations, so the locations
+   * it returns need the same rewrite the JDO path in {@link ObjectStore} applies. Owned and
+   * closed by the {@link ObjectStore} that created this instance.
+   */
+  private final HopsLocationResolver locationResolver;
 
   /**
    * We want to avoid db-specific code in this class and stick with ANSI SQL. However:
@@ -189,10 +195,12 @@ class MetaStoreDirectSql {
       TAB_COL_STATS, PARTITION_KEY_VALS, PART_PRIVS, PART_COL_PRIVS, SKEWED_STRING_LIST, CDS,
       TBL_COL_PRIVS, FUNCS, FUNC_RU;
 
-  public MetaStoreDirectSql(PersistenceManager pm, Configuration conf, String schema) {
+  public MetaStoreDirectSql(PersistenceManager pm, Configuration conf, String schema,
+      HopsLocationResolver locationResolver) {
     this.pm = pm;
     this.conf = conf;
     this.schema = schema;
+    this.locationResolver = locationResolver;
     this.dbType = PersistenceManagerProvider.getDatabaseProduct();
     int batchSize = MetastoreConf.getIntVar(conf, ConfVars.DIRECT_SQL_PARTITION_BATCH_SIZE);
     this.directSqlInsertPart = new DirectSqlInsertPart(pm, dbType, batchSize);
@@ -420,7 +428,8 @@ class MetaStoreDirectSql {
       }
       Database db = new Database();
       db.setName(MetastoreDirectSqlUtils.extractSqlString(dbline[1]));
-      db.setLocationUri(MetastoreDirectSqlUtils.extractSqlString(dbline[2]));
+      db.setLocationUri(locationResolver.resolveLocation(
+          MetastoreDirectSqlUtils.extractSqlString(dbline[2])));
       db.setDescription(MetastoreDirectSqlUtils.extractSqlString(dbline[3]));
       db.setOwnerName(MetastoreDirectSqlUtils.extractSqlString(dbline[4]));
       String type = MetastoreDirectSqlUtils.extractSqlString(dbline[5]);
@@ -430,7 +439,8 @@ class MetaStoreDirectSql {
       if (dbline[7] != null) {
         db.setCreateTime(MetastoreDirectSqlUtils.extractSqlInt(dbline[7]));
       }
-      db.setManagedLocationUri(MetastoreDirectSqlUtils.extractSqlString(dbline[8]));
+      db.setManagedLocationUri(locationResolver.resolveLocation(
+          MetastoreDirectSqlUtils.extractSqlString(dbline[8])));
       String dbType = MetastoreDirectSqlUtils.extractSqlString(dbline[9]);
       if (dbType != null && dbType.equalsIgnoreCase(DatabaseType.REMOTE.name())) {
         db.setType(DatabaseType.REMOTE);
@@ -847,7 +857,8 @@ class MetaStoreDirectSql {
     }
     PartitionProjectionEvaluator projectionEvaluator =
         new PartitionProjectionEvaluator(pm, fieldnameToTableName, partitionFields,
-            convertMapNullsToEmptyStrings, isView, includeParamKeyPattern, excludeParamKeyPattern);
+            convertMapNullsToEmptyStrings, isView, includeParamKeyPattern, excludeParamKeyPattern,
+            locationResolver);
     // Get full objects. For Oracle/etc. do it in batches.
     return Batchable.runBatched(batchSize, partitionIds, new Batchable<Long, Partition>() {
       @Override
@@ -1151,7 +1162,7 @@ class MetaStoreDirectSql {
         if (tmpBoolean != null) {
           sd.setStoredAsSubDirectories(tmpBoolean);
         }
-        sd.setLocation((String) fields[9]);
+        sd.setLocation(locationResolver.resolveLocation((String) fields[9]));
         if (fields[10] != null) {
           sd.setNumBuckets(MetastoreDirectSqlUtils.extractSqlInt(fields[10]));
         }

@@ -334,6 +334,7 @@ public class ObjectStore implements RawStore, Configurable {
   private static final String PTYARG_EQ_KEY = "this.propertyKey == key";
 
   private boolean isInitialized = false;
+  private HopsLocationResolver locationResolver;
   protected PersistenceManager pm = null;
   protected SQLGenerator sqlGenerator = null;
   private MetaStoreDirectSql directSql = null;
@@ -382,6 +383,12 @@ public class ObjectStore implements RawStore, Configurable {
     openTrasactionCalls = 0;
     currentTransaction = null;
     transactionStatus = TXN_STATUS.NO_STATE;
+
+    // HopsFS: must be in place before initialize(), which hands it to MetaStoreDirectSql.
+    if (locationResolver != null) {
+      locationResolver.close();
+    }
+    locationResolver = new HopsLocationResolver(conf);
 
     initialize();
 
@@ -436,7 +443,7 @@ public class ObjectStore implements RawStore, Configurable {
       if (MetastoreConf.getBoolVar(getConf(), ConfVars.TRY_DIRECT_SQL)) {
         String schema = PersistenceManagerProvider.getProperty("javax.jdo.mapping.Schema");
         schema = org.apache.commons.lang3.StringUtils.defaultIfBlank(schema, null);
-        directSql = new MetaStoreDirectSql(pm, conf, schema);
+        directSql = new MetaStoreDirectSql(pm, conf, schema, locationResolver);
       }
     }
     if (propertyStore == null) {
@@ -549,6 +556,10 @@ public class ObjectStore implements RawStore, Configurable {
     if (pm != null) {
       pm.close();
       pm = null;
+    }
+    if (locationResolver != null) {
+      locationResolver.close();
+      locationResolver = null;
     }
   }
 
@@ -671,11 +682,33 @@ public class ObjectStore implements RawStore, Configurable {
     }
   }
 
-  private void setTransactionSavePoint(String savePoint) {
-    if (savePoint != null) {
+  // Latched once the backing datastore rejects SAVEPOINT (NDB/RonDB tables do not support
+  // savepoints) so that later calls skip the attempt instead of failing on every operation.
+  private static volatile boolean savepointsUnsupported = false;
+
+  /**
+   * Sets a savepoint on the current transaction if the datastore supports it.
+   *
+   * @return the savepoint name if it was set, or null if none was requested or the datastore
+   *         does not support savepoints. In the latter case direct SQL still runs, but a
+   *         failure inside an open transaction falls back to JDO without a partial rollback,
+   *         which is the pre-HIVE-26976 (Hive 3) behavior.
+   */
+  private String setTransactionSavePoint(String savePoint) {
+    if (savePoint == null || savepointsUnsupported) {
+      return null;
+    }
+    try {
       ExecutionContext ec = ((JDOPersistenceManager) pm).getExecutionContext();
       ec.getStoreManager().getConnectionManager().getConnection(ec);
       ((JDOTransaction) currentTransaction).setSavepoint(savePoint);
+      return savePoint;
+    } catch (Exception e) {
+      savepointsUnsupported = true;
+      LOG.warn("Datastore does not support transaction savepoints; direct SQL failures inside "
+          + "an open transaction will fall back to JDO without rolling back to a savepoint: "
+          + e.getMessage());
+      return null;
     }
   }
 
@@ -709,7 +742,7 @@ public class ObjectStore implements RawStore, Configurable {
     try {
       MCatalog mCat = getMCatalog(catName);
       if (org.apache.commons.lang3.StringUtils.isNotBlank(cat.getLocationUri())) {
-        mCat.setLocationUri(cat.getLocationUri());
+        mCat.setLocationUri(locationResolver.enforceWarehouseAuthority(cat.getLocationUri()));
       }
       if (org.apache.commons.lang3.StringUtils.isNotBlank(cat.getDescription())) {
         mCat.setDescription(cat.getDescription());
@@ -796,13 +829,13 @@ public class ObjectStore implements RawStore, Configurable {
     if (cat.isSetDescription()) {
       mCat.setDescription(cat.getDescription());
     }
-    mCat.setLocationUri(cat.getLocationUri());
+    mCat.setLocationUri(locationResolver.enforceWarehouseAuthority(cat.getLocationUri()));
     mCat.setCreateTime(cat.getCreateTime());
     return mCat;
   }
 
   private Catalog mCatToCat(MCatalog mCat) {
-    Catalog cat = new Catalog(mCat.getName(), mCat.getLocationUri());
+    Catalog cat = new Catalog(mCat.getName(), locationResolver.resolveLocation(mCat.getLocationUri()));
     if (mCat.getDescription() != null) {
       cat.setDescription(mCat.getDescription());
     }
@@ -818,8 +851,8 @@ public class ObjectStore implements RawStore, Configurable {
     mdb.setCatalogName(normalizeIdentifier(db.getCatalogName()));
     assert mdb.getCatalogName() != null;
     mdb.setName(db.getName().toLowerCase());
-    mdb.setLocationUri(db.getLocationUri());
-    mdb.setManagedLocationUri(db.getManagedLocationUri());
+    mdb.setLocationUri(locationResolver.enforceWarehouseAuthority(db.getLocationUri()));
+    mdb.setManagedLocationUri(locationResolver.enforceWarehouseAuthority(db.getManagedLocationUri()));
     mdb.setDescription(db.getDescription());
     mdb.setParameters(db.getParameters());
     mdb.setOwnerName(db.getOwnerName());
@@ -928,8 +961,9 @@ public class ObjectStore implements RawStore, Configurable {
       db.setConnector_name(org.apache.commons.lang3.StringUtils.defaultIfBlank(mdb.getDataConnectorName(), null));
       db.setRemote_dbname(org.apache.commons.lang3.StringUtils.defaultIfBlank(mdb.getRemoteDatabaseName(), null));
     }
-    db.setLocationUri(mdb.getLocationUri());
-    db.setManagedLocationUri(org.apache.commons.lang3.StringUtils.defaultIfBlank(mdb.getManagedLocationUri(), null));
+    db.setLocationUri(locationResolver.resolveLocation(mdb.getLocationUri()));
+    db.setManagedLocationUri(org.apache.commons.lang3.StringUtils.defaultIfBlank(
+        locationResolver.resolveLocation(mdb.getManagedLocationUri()), null));
     db.setCatalogName(catName);
     db.setCreateTime(mdb.getCreateTime());
     return db;
@@ -958,10 +992,10 @@ public class ObjectStore implements RawStore, Configurable {
         mdb.setDescription(db.getDescription());
       }
       if (org.apache.commons.lang3.StringUtils.isNotBlank(db.getLocationUri())) {
-        mdb.setLocationUri(db.getLocationUri());
+        mdb.setLocationUri(locationResolver.enforceWarehouseAuthority(db.getLocationUri()));
       }
       if (org.apache.commons.lang3.StringUtils.isNotBlank(db.getManagedLocationUri())) {
-        mdb.setManagedLocationUri(db.getManagedLocationUri());
+        mdb.setManagedLocationUri(locationResolver.enforceWarehouseAuthority(db.getManagedLocationUri()));
       }
       openTransaction();
       pm.makePersistent(mdb);
@@ -1091,8 +1125,9 @@ public class ObjectStore implements RawStore, Configurable {
     db.setOwnerType(principalType);
     if (mdb.getType().equalsIgnoreCase(DatabaseType.NATIVE.name())) {
       db.setType(DatabaseType.NATIVE);
-      db.setLocationUri(mdb.getLocationUri());
-      db.setManagedLocationUri(org.apache.commons.lang3.StringUtils.defaultIfBlank(mdb.getManagedLocationUri(), null));
+      db.setLocationUri(locationResolver.resolveLocation(mdb.getLocationUri()));
+      db.setManagedLocationUri(org.apache.commons.lang3.StringUtils.defaultIfBlank(
+          locationResolver.resolveLocation(mdb.getManagedLocationUri()), null));
     } else {
       db.setType(DatabaseType.REMOTE);
       db.setConnector_name(org.apache.commons.lang3.StringUtils.defaultIfBlank(mdb.getDataConnectorName(), null));
@@ -2480,7 +2515,7 @@ public class ObjectStore implements RawStore, Configurable {
 
     Map<String, String> sdParams = isAcidTable ? Collections.emptyMap() : convertMap(msd.getParameters());
     StorageDescriptor sd = new StorageDescriptor(convertToFieldSchemas(mFieldSchemas),
-        msd.getLocation(), msd.getInputFormat(), msd.getOutputFormat(), msd
+        locationResolver.resolveLocation(msd.getLocation()), msd.getInputFormat(), msd.getOutputFormat(), msd
         .isCompressed(), msd.getNumBuckets(),
         (!isAcidTable) ? convertToSerDeInfo(msd.getSerDeInfo(), true)
             : new SerDeInfo(msd.getSerDeInfo().getName(), msd.getSerDeInfo().getSerializationLib(), Collections.emptyMap()),
@@ -2581,8 +2616,9 @@ public class ObjectStore implements RawStore, Configurable {
     if (sd == null) {
       return null;
     }
-    return new MStorageDescriptor(mcd, sd
-        .getLocation(), sd.getInputFormat(), sd.getOutputFormat(), sd
+    return new MStorageDescriptor(mcd,
+        locationResolver.enforceWarehouseAuthority(sd.getLocation()),
+        sd.getInputFormat(), sd.getOutputFormat(), sd
         .isCompressed(), sd.getNumBuckets(), convertToMSerDeInfo(sd
         .getSerdeInfo()), sd.getBucketCols(),
         convertToMOrders(sd.getSortCols()), sd.getParameters(),
@@ -4395,7 +4431,7 @@ public class ObjectStore implements RawStore, Configurable {
       boolean isConfigEnabled = MetastoreConf.getBoolVar(getConf(), ConfVars.TRY_DIRECT_SQL)
           && (MetastoreConf.getBoolVar(getConf(), ConfVars.TRY_DIRECT_SQL_DDL) || !isInTxn);
       if (isConfigEnabled && directSql == null) {
-        directSql = new MetaStoreDirectSql(pm, getConf(), "");
+        directSql = new MetaStoreDirectSql(pm, getConf(), "", locationResolver);
       }
 
       if (!allowJdo && isConfigEnabled && !directSql.isCompatibleDatastore()) {
@@ -4417,13 +4453,16 @@ public class ObjectStore implements RawStore, Configurable {
         start(initTable);
         String savePoint = isInTxn && allowJdo ? "rollback_" + System.nanoTime() : null;
         if (doUseDirectSql) {
+          // Track the savepoint that was actually established: if prepareTxn or the savepoint
+          // creation itself fails, the error handler must not try to roll back to it.
+          String activeSavePoint = null;
           try {
             directSql.prepareTxn();
-            setTransactionSavePoint(savePoint);
+            activeSavePoint = setTransactionSavePoint(savePoint);
             this.results = getSqlResult(this);
             LOG.debug("Using direct SQL optimization.");
           } catch (Exception ex) {
-            handleDirectSqlError(ex, savePoint);
+            handleDirectSqlError(ex, activeSavePoint);
           }
         }
         // Note that this will be invoked in 2 cases:

@@ -103,6 +103,7 @@ public class PartitionProjectionEvaluator {
   private final String SERDES;
   private final String PARTITION_PARAMS;
   private final PersistenceManager pm;
+  private final HopsLocationResolver locationResolver;
 
   @VisibleForTesting static final String SD_PATTERN = "sd|sd\\.";
   @VisibleForTesting static final String SERDE_PATTERN = "sd\\.serdeInfo|sd\\.serdeInfo\\.";
@@ -167,6 +168,20 @@ public class PartitionProjectionEvaluator {
       ImmutableMap<String, String> fieldNameToTableName, List<String> projectionFields,
       boolean convertMapNullsToEmptyStrings, boolean isView, String includeParamKeyPattern,
       String excludeParamKeyPattern) throws MetaException {
+    this(pm, fieldNameToTableName, projectionFields, convertMapNullsToEmptyStrings, isView,
+        includeParamKeyPattern, excludeParamKeyPattern, null);
+  }
+
+  /**
+   * @param locationResolver HopsFS: rewrites the sd.location values this projection returns, so
+   *     that they match what the non-projection read paths hand out. May be null, in which case
+   *     the locations are returned as stored.
+   */
+  public PartitionProjectionEvaluator(PersistenceManager pm,
+      ImmutableMap<String, String> fieldNameToTableName, List<String> projectionFields,
+      boolean convertMapNullsToEmptyStrings, boolean isView, String includeParamKeyPattern,
+      String excludeParamKeyPattern, HopsLocationResolver locationResolver) throws MetaException {
+    this.locationResolver = locationResolver;
     this.pm = pm;
     this.fieldNameToTableName = fieldNameToTableName;
     this.convertMapNullsToEmptyStrings = convertMapNullsToEmptyStrings;
@@ -412,6 +427,8 @@ public class PartitionProjectionEvaluator {
                     value = MetastoreDirectSqlUtils.extractSqlBoolean(value);
                   } else if (node.fieldName.equals("lastAccessTime") || node.fieldName.equals("createTime")) {
                     value = MetastoreDirectSqlUtils.extractSqlInt(value);
+                  } else if (node.fieldName.equals("sd.location") && locationResolver != null) {
+                    value = locationResolver.resolveLocation((String) value);
                   }
                   MetaStoreServerUtils.setNestedProperty(partition, node.fieldName, value, true);
                 }
