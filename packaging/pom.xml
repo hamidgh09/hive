@@ -365,11 +365,6 @@
     </dependency>
     <dependency>
       <groupId>io.hops.hive</groupId>
-      <artifactId>hive-accumulo-handler</artifactId>
-      <version>${project.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>io.hops.hive</groupId>
       <artifactId>hive-llap-client</artifactId>
       <version>${project.version}</version>
     </dependency>
