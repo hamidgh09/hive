@@ -18,7 +18,7 @@ FROM eclipse-temurin:17
 ARG HIVE_VERSION=4.1.0
 ARG HIVE_TAR_NAME=hive-packaging-${HIVE_VERSION}-bin.tar.gz
 ARG HADOOP_VERSION_EE=3.4.3.2-EE-RC3
-ARG PROMETHEUS_EXPORTER_VERSION="1.0.1"
+ARG PROMETHEUS_EXPORTER_VERSION="1.6.0"
 ARG MYSQL_CONNECTOR_VERSION="9.7.0"
 ARG HUDI_BUNDLE_VERSION="1.2.0"
 
@@ -28,6 +28,9 @@ ARG HADOOP_GROUP_NAME="hadoop"
 ARG HADOOP_GROUP_ID="1234"
 
 RUN apt-get update && apt-get upgrade -y
+
+# Remove Canonical Pebble. Unused and its Go stdlib triggers CVE findings.
+RUN rm -rf /usr/bin/pebble /var/lib/pebble
 
 RUN groupadd -g ${HADOOP_GROUP_ID} ${HADOOP_GROUP_NAME} && \
     useradd -m --uid ${USERID} --gid ${HADOOP_GROUP_ID} ${USER}
