@@ -451,10 +451,5 @@
         </exclusion>
       </exclusions>
     </dependency>
-    <dependency>
-      <groupId>io.hops.hive</groupId>
-      <artifactId>hive-kudu-handler</artifactId>
-      <version>${project.version}</version>
-    </dependency>
   </dependencies>
 </project>

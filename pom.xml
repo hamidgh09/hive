@@ -112,7 +112,7 @@
     <apache-directory-server.version>2.0.0-M24</apache-directory-server.version>
     <avatica.version>1.23.0</avatica.version>
     <avro.version>1.12.0</avro.version>
-    <bcprov-jdk18on.version>1.78</bcprov-jdk18on.version>
+    <bcprov-jdk18on.version>1.80.2</bcprov-jdk18on.version>
     <calcite.version>1.33.0</calcite.version>
     <datanucleus-api-jdo.version>6.0.3</datanucleus-api-jdo.version>
     <datanucleus-core.version>6.0.10</datanucleus-core.version>
@@ -153,7 +153,7 @@
     <httpcomponents.core.version>4.4.13</httpcomponents.core.version>
     <immutables.version>2.9.2</immutables.version>
     <ivy.version>2.5.2</ivy.version>
-    <jackson.version>2.16.1</jackson.version>
+    <jackson.version>2.18.9</jackson.version>
     <jamon.plugin.version>2.3.4</jamon.plugin.version>
     <jamon-runtime.version>2.4.1</jamon-runtime.version>
     <javax-servlet.version>3.1.0</javax-servlet.version>
@@ -188,7 +188,7 @@
     <mockito-core.version>5.17.0</mockito-core.version>
     <mockito-inline.version>5.2.0</mockito-inline.version>
     <mina.version>2.0.0-M5</mina.version>
-    <netty.version>4.1.116.Final</netty.version>
+    <netty.version>4.1.137.Final</netty.version>
     <netty3.version>3.10.5.Final</netty3.version>
     <!-- used by druid storage handler -->
     <pac4j-saml.version>4.5.8</pac4j-saml.version>
@@ -211,10 +211,10 @@
     <snappy.version>1.1.10.4</snappy.version>
     <jersey-wadl-doclet.version>4.0.0-M2</jersey-wadl-doclet.version>
     <jaxb-runtime.version>4.0.0-M2</jaxb-runtime.version>
-    <velocity.version>2.3</velocity.version>
+    <velocity.version>2.4</velocity.version>
     <xerces.version>2.12.2</xerces.version>
     <xmlsec.version>2.3.4</xmlsec.version>
-    <zookeeper.version>3.8.4</zookeeper.version>
+    <zookeeper.version>3.8.6</zookeeper.version>
     <jpam.version>1.1</jpam.version>
     <felix.version>2.4.0</felix.version>
     <curator.version>5.7.1</curator.version>
@@ -448,6 +448,27 @@
         <artifactId>commons-math3</artifactId>
         <version>${commons-math3.version}</version>
       </dependency>
+      <!-- Transitive-dependency pins for CVE remediation -->
+      <dependency>
+        <groupId>commons-beanutils</groupId>
+        <artifactId>commons-beanutils</artifactId>
+        <version>1.11.0</version>
+      </dependency>
+      <dependency>
+        <groupId>org.lz4</groupId>
+        <artifactId>lz4-java</artifactId>
+        <version>1.8.1</version>
+      </dependency>
+      <dependency>
+        <groupId>io.airlift</groupId>
+        <artifactId>aircompressor</artifactId>
+        <version>2.0.3</version>
+      </dependency>
+      <dependency>
+        <groupId>net.minidev</groupId>
+        <artifactId>json-smart</artifactId>
+        <version>2.5.2</version>
+      </dependency>
       <dependency>
         <groupId>org.graalvm.js</groupId>
         <artifactId>js-scriptengine</artifactId>
@@ -472,6 +493,13 @@
         <groupId>io.jsonwebtoken</groupId>
         <artifactId>jjwt-jackson</artifactId>
         <version>${jjwt.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.netty</groupId>
+        <artifactId>netty-bom</artifactId>
+        <version>${netty.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
       </dependency>
       <dependency>
         <groupId>io.netty</groupId>
